@@ -52,7 +52,7 @@ function render() {
   if (q) items = items.filter(t => t.bybit.includes(q));
   $("count").textContent = items.length + " cutluk";
   $("listTitle").textContent = S.route === "#/top" ? "Top 50" : "Cutlukler";
-  $("grid").innerHTML = items.slice(0, 300).map(coinCard).join("");
+  $("grid").innerHTML = items.map(coinCard).join("");
   // marquee: ad + qiymet, yavas (css 170s). Reng: once canli istiqamet, yoxdursa 24s deyisimi.
   const mitems = S.items.slice(0, 80).map(t => {
     const c = dirCls(t.bybit, t.price) || (t.change24h >= 0 ? "up" : "down");
@@ -202,6 +202,7 @@ async function applyTacticFilter() {
   const minBuy = +$("fBuy").value, minSell = +$("fSell").value;
   const sig = $("fSig").value, top = +$("fTop").value;
   const cands = S.items.slice(0, top);
+  if (top >= 500) $("fStatus").textContent = `Top ${top}: bir nece deqiqe cheke biler, gozle...`;
   $("fGo").disabled = true;
   const map = {}, list = [];
   let done = 0;
