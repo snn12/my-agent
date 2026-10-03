@@ -1,0 +1,30 @@
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Arial;background:#0b0e14;color:#e8ecf3}
+.top{display:flex;gap:10px;align-items:center;padding:10px 14px;background:#121722;position:sticky;top:0;z-index:5}
+.top button{font-size:20px;background:#1d2637;color:#fff;border:0;border-radius:8px;padding:6px 10px;cursor:pointer}
+.brand{font-weight:700}.brand span{color:#7dd3a8;font-weight:400}
+#search{margin-left:auto;background:#0b0e14;border:1px solid #26314a;color:#fff;border-radius:8px;padding:7px 10px;min-width:140px}
+.live{display:flex;align-items:center;gap:6px;font-size:13px;color:#9fb0cc}.dot{width:9px;height:9px;border-radius:50%;background:#34d399;display:inline-block;animation:bl 2s infinite}
+@keyframes bl{50%{opacity:.3}}
+.marquee-wrap{overflow:hidden;background:#0e1420;border-block:1px solid #1c2536;white-space:nowrap}
+.marquee{display:inline-block;padding:8px 0;animation:mq 90s linear infinite;font-size:14px}
+.marquee span{margin:0 18px}.up{color:#22c55e}.down{color:#ef4444}
+@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.side{position:fixed;left:0;top:0;bottom:0;width:260px;background:#121722;padding:16px;transform:translateX(-105%);transition:.2s;z-index:10;border-right:1px solid #26314a}
+.side.open{transform:none}.side a{display:block;color:#dbe4f5;text-decoration:none;padding:8px 6px;border-radius:8px}.side a:hover{background:#1d2637}
+.tfrow button{background:#0b0e14;color:#fff;border:1px solid #26314a;border-radius:8px;padding:6px 10px;margin-right:6px;cursor:pointer}
+.tfrow button.on{background:#22c55e;border-color:#22c55e;color:#04120a}.hint{color:#8b98b3;font-size:13px}
+main{padding:16px;max-width:1100px;margin:0 auto}
+.row{display:flex;align-items:baseline;gap:10px}#count{color:#8b98b3}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.card,.coin{background:#121722;border:1px solid #1e293b;border-radius:12px;padding:12px;margin-top:12px}
+.coin h3{margin:0 0 6px}.coin .p{font-size:20px;font-weight:700}.coin .meta{color:#8b98b3;font-size:13px}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:700}
+.b-buy{background:#052e1b;color:#22c55e}.b-sell{background:#3b0a0a;color:#ef4444}.b-hold,.b-neytral{background:#232c40;color:#9fb0cc}.b-long{background:#052e1b;color:#22c55e}.b-short{background:#3b0a0a;color:#ef4444}
+.tactics{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.tac{background:#0b0e14;border:1px solid #26314a;border-radius:10px;padding:8px;text-align:center}
+.tac b{display:block;letter-spacing:1px}
+.morebtn{margin-top:8px;background:#1d2637;color:#fff;border:0;border-radius:8px;padding:7px 10px;cursor:pointer}
+.reasons{margin-top:8px;color:#c4cfE4;font-size:14px}
+textarea{width:100%;min-height:64px;background:#0b0e14;color:#fff;border:1px solid #26314a;border-radius:8px;padding:8px}
+button#addReview,button#saveCtx,button#back{background:#22c55e;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:700;margin-top:6px}
+.muted{color:#9fb0cc}.price-line{font-size:18px}

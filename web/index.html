@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>my-agent trading</title>
+<link rel="stylesheet" href="/web/styles.css">
+</head>
+<body>
+<header class="top">
+  <button id="burger" aria-label="menu">☰</button>
+  <div class="brand">my-agent <span>trading</span></div>
+  <input id="search" placeholder="Axtar: BTC...">
+  <div class="live"><span class="dot"></span><span id="liveText">Bybit canli</span></div>
+</header>
+
+<div class="marquee-wrap"><div id="marquee" class="marquee"></div></div>
+
+<aside id="side" class="side">
+  <button id="closeSide">✕ Bağla</button>
+  <h3>Menu</h3>
+  <a href="#/" data-nav>Bütün cutluklər</a>
+  <a href="#/top" data-nav>Top 50 (dovriyyə)</a>
+  <a href="#/about" data-nav>Haqqında</a>
+  <h3>Timeframe</h3>
+  <div class="tfrow">
+    <button data-tf="15m">15m</button>
+    <button data-tf="1h" class="on">1h</button>
+    <button data-tf="4h">4h</button>
+  </div>
+  <p class="hint">Qiymətlər hər 2 dəqiqədən bir yenilənir. Yaşıl = qalxdı, qırmızı = düşdü.</p>
+</aside>
+
+<main>
+  <section id="listView">
+    <div class="row"><h2 id="listTitle">Cutluklər</h2><span id="count"></span></div>
+    <div id="grid" class="grid"></div>
+  </section>
+
+  <section id="coinView" hidden>
+    <button id="back">← Geri</button>
+    <h2 id="coinTitle"></h2>
+    <div class="price-line">Qiymət: <b id="coinPrice">-</b> <span id="coinChg"></span></div>
+    <div class="card">
+      <h3>Siqnal</h3>
+      <div id="coinSignal"></div>
+      <div id="coinReasons" class="reasons" hidden></div>
+    </div>
+    <div class="card">
+      <h3>Taktikalar (qısa ad)</h3>
+      <div id="tactics" class="tactics"></div>
+    </div>
+    <div class="card">
+      <h3>Coin haqqında</h3>
+      <p id="coinInfo" class="muted"></p>
+      <h4>Rəylər / qeydlərin</h4>
+      <div id="reviews"></div>
+      <textarea id="reviewBox" placeholder="Bu coin haqda rəy yaz..."></textarea>
+      <button id="addReview">Rəy əlavə et</button>
+      <h4>AI üçün kontekst (sən göndərəcək məlumatlar)</h4>
+      <textarea id="ctxBox" placeholder="Məs: bu coin haqda xəbər, sənin fikrin... (brauzerdə saxlanılır)"></textarea>
+      <button id="saveCtx">Saxla</button>
+    </div>
+  </section>
+
+  <section id="aboutView" hidden>
+    <h2>Haqqında</h2>
+    <p>Qiymətlər Bybit public API-dən gəlir. Siqnallar EMA/RSI/MACD skorinqindəndir, investisiya məsləhəti deyil.</p>
+    <p>Aktivləşdirmə: saytı açan kimi ilk yükləmədə 1000-ə qədər USDT cutlüyü çəkilir, sonra hər 2 dəqiqədən bir yenilənir.</p>
+  </section>
+</main>
+
+<script src="/web/app.js"></script>
+</body>
+</html>

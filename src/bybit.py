@@ -1,0 +1,85 @@
+"""Bybit public API — key lazim deyil."""
+import requests
+
+BASE = "https://api.bybit.com"
+
+TF_TO_BYBIT = {
+    "15m": "15",
+    "1h": "60",
+    "4h": "240",
+    "1D": "D",
+}
+
+
+def to_bybit(symbol: str) -> str:
+    """BTC/USDT -> BTCUSDT"""
+    return symbol.replace("/", "").upper()
+
+
+def to_display(bybit_symbol: str) -> str:
+    s = bybit_symbol.upper()
+    if s.endswith("USDT"):
+        return s[:-4] + "/USDT"
+    return s
+
+
+def fetch_tickers(category: str = "linear", limit: int = 1000):
+    """Butun USDT lineer tickerler. Siralama: turnover科学与."""
+    url = f"{BASE}/v5/market/tickers"
+    out = []
+    cursor = ""
+    while len(out) < limit:
+        params = {"category": category, "limit": 1000}
+        if cursor:
+            params["cursor"] = cursor
+        r = requests.get(url, params=params, timeout=20)
+        r.raise_for_status()
+        data = r.json()
+        if data.get("retCode") != 0:
+            raise RuntimeError(f"Bybit xetasi: {data}")
+        page = data["result"]["list"]
+        # Yalniz USDT ile bitenler
+        page = [t for t in page if t["symbol"].endswith("USDT")]
+        out.extend(page)
+        cursor = data["result"].get("nextPageCursor", "")
+        if not cursor or not page:
+            break
+    # Dovriyyeye gore sirala, ilk `limit`
+    out.sort(key=lambda t: float(t.get("turnover24h", 0) or 0), reverse=True)
+    norm = []
+    for t in out[:limit]:
+        try:
+            price = float(t["lastPrice"])
+        except Exception:
+            continue
+        norm.append({
+            "symbol": to_display(t["symbol"]),
+            "bybit": t["symbol"],
+            "price": price,
+            "change24h": float(t.get("price24hPcnt", 0) or 0) * 100,
+            "volume24h": float(t.get("volume24h", 0) or 0),
+            "turnover24h": float(t.get("turnover24h", 0) or 0),
+        })
+    return norm
+
+
+def fetch_kline(symbol: str, timeframe: str = "1h", limit: int = 200, category: str = "linear"):
+    """Kline -> OHLCV DataFrame (kohneden yeniye)."""
+    import pandas as pd
+    interval = TF_TO_BYBIT.get(timeframe, "60")
+    url = f"{BASE}/v5/market/kline"
+    params = {"category": category, "symbol": to_bybit(symbol),
+              "interval": interval, "limit": min(limit, 1000)}
+    r = requests.get(url, params=params, timeout=20)
+    r.raise_for_status()
+    data = r.json()
+    if data.get("retCode") != 0:
+        raise RuntimeError(f"Bybit kline xetasi: {data}")
+    rows = data["result"]["list"]
+    rows = list(reversed(rows))  # Bybit yenini evvel verir
+    df = pd.DataFrame(rows, columns=["ts", "open", "high", "low", "close", "volume", "turnover"])
+    for c in ["open", "high", "low", "close", "volume"]:
+        df[c] = df[c].astype(float)
+    df["ts"] = df["ts"].astype(int)
+    df["datetime"] = pd.to_datetime(df["ts"], unit="ms", utc=True)
+    return df[["ts", "open", "high", "low", "close", "volume", "datetime"]]
