@@ -488,6 +488,194 @@ def orb_t(df, open_minutes: int = 60):
     return {"name": "ORB", "signal": "HOLD", "detail": f"OR {px(orl)}-{px(orh)} icinde"}
 
 
+def willr_t(df, period: int = 14):
+    """Williams %R: -80 alti BUY, -20 ustu SELL."""
+    hh = df["high"].rolling(period).max()
+    ll = df["low"].rolling(period).min()
+    wr = (hh - df["close"]) / (hh - ll).replace(0, float("nan")) * -100
+    v = float(wr.iloc[-1])
+    if v != v:
+        return {"name": "WILLR", "signal": "HOLD", "detail": "Data azdir"}
+    if v < -80:
+        return {"name": "WILLR", "signal": "BUY", "detail": f"%R {v:.1f} hedden artiq satilib"}
+    if v > -20:
+        return {"name": "WILLR", "signal": "SELL", "detail": f"%R {v:.1f} hedden artiq alinib"}
+    return {"name": "WILLR", "signal": "HOLD", "detail": f"%R {v:.1f} ortada"}
+
+
+def mfi_t(df, period: int = 14):
+    """Money Flow Index (hecim + RSI): 20 alti BUY, 80 ustu SELL."""
+    tp = (df["high"] + df["low"] + df["close"]) / 3.0
+    mf = tp * df["volume"]
+    pos = mf.where(tp > tp.shift(1), 0.0).rolling(period).sum()
+    neg = mf.where(tp < tp.shift(1), 0.0).rolling(period).sum().replace(0, float("nan"))
+    mfi_v = float((100 - 100 / (1 + pos / neg)).iloc[-1])
+    if mfi_v != mfi_v:
+        return {"name": "MFI", "signal": "HOLD", "detail": "Data azdir"}
+    if mfi_v < 20:
+        return {"name": "MFI", "signal": "BUY", "detail": f"MFI {mfi_v:.1f} pul girisi gozlenilir"}
+    if mfi_v > 80:
+        return {"name": "MFI", "signal": "SELL", "detail": f"MFI {mfi_v:.1f} pul cixisi riski"}
+    return {"name": "MFI", "signal": "HOLD", "detail": f"MFI {mfi_v:.1f} neytral"}
+
+
+def streak_t(df, n: int = 4):
+    """Ardicil sam tukenmesi: 4+ eyni istiqamet = eksine (contrarian)."""
+    closes = df["close"].to_numpy()
+    up = down = 0
+    for i in range(len(closes) - 1, 0, -1):
+        if closes[i] > closes[i - 1]:
+            if down:
+                break
+            up += 1
+        elif closes[i] < closes[i - 1]:
+            if up:
+                break
+            down += 1
+        else:
+            break
+    if up >= n:
+        return {"name": "STREAK", "signal": "SELL", "detail": f"{up} ardicil yasil: tukenme riski"}
+    if down >= n:
+        return {"name": "STREAK", "signal": "BUY", "detail": f"{down} ardicil qirmizi: donus mumkun"}
+    return {"name": "STREAK", "signal": "HOLD", "detail": "Seriya yoxdur"}
+
+
+def kelt_t(df, period: int = 20, mult: float = 2.0):
+    """Keltner kanali: ustden cixis BUY, altdan SELL."""
+    mid = df["close"].ewm(span=period, adjust=False).mean()
+    rg = (df["high"] - df["low"]).ewm(span=period, adjust=False).mean() * mult
+    up, lo = float((mid + rg).iloc[-1]), float((mid - rg).iloc[-1])
+    price = float(df["close"].iloc[-1])
+    if price > up:
+        return {"name": "KELT", "signal": "BUY", "detail": f"Kanal {px(lo)}-{px(up)} yuxari qirildi"}
+    if price < lo:
+        return {"name": "KELT", "signal": "SELL", "detail": f"Kanal {px(lo)}-{px(up)} asagi qirildi"}
+    return {"name": "KELT", "signal": "HOLD", "detail": "Kanal icinde"}
+
+
+def obv_t(df, period: int = 20):
+    """OBV trendi: OBV EMA ustu = yigim (BUY)."""
+    direction = df["close"].diff().apply(lambda x: 1 if x > 0 else (-1 if x < 0 else 0))
+    obv = (direction * df["volume"]).cumsum()
+    oe = obv.ewm(span=period, adjust=False).mean()
+    if float(obv.iloc[-1]) > float(oe.iloc[-1]):
+        return {"name": "OBV", "signal": "BUY", "detail": "OBV ortalamasinin ustunde (yigim)"}
+    return {"name": "OBV", "signal": "SELL", "detail": "OBV ortalama altinda (paylanma)"}
+
+
+def sar_t(df, af: float = 0.02, max_af: float = 0.2):
+    """Parabolic SAR: qiymet SAR ustu BUY, alti SELL."""
+    h = df["high"].to_numpy()
+    ll = df["low"].to_numpy()
+    n = len(df)
+    sar = [float(ll[0])]
+    ep = float(h[0])
+    up = True
+    caf = af
+    for i in range(1, n):
+        prev = sar[-1]
+        cur = prev + caf * (ep - prev)
+        if up:
+            cur = min(cur, float(ll[i - 1]), float(ll[i]) if i < n else float(ll[i - 1]))
+            if float(ll[i]) < cur:
+                up = False
+                cur = ep
+                ep = float(ll[i])
+                caf = af
+            else:
+                if float(h[i]) > ep:
+                    ep = float(h[i])
+                    caf = min(caf + af, max_af)
+        else:
+            cur = max(cur, float(h[i - 1]), float(h[i]) if i < n else float(h[i - 1]))
+            if float(h[i]) > cur:
+                up = True
+                cur = ep
+                ep = float(h[i])
+                caf = af
+            else:
+                if float(ll[i]) < ep:
+                    ep = float(ll[i])
+                    caf = min(caf + af, max_af)
+        sar.append(cur)
+    price = float(df["close"].iloc[-1])
+    if up and price > sar[-1]:
+        return {"name": "SAR", "signal": "BUY", "detail": f"SAR {px(sar[-1])} alti destek"}
+    if not up and price < sar[-1]:
+        return {"name": "SAR", "signal": "SELL", "detail": f"SAR {px(sar[-1])} ustu muqavimet"}
+    return {"name": "SAR", "signal": "HOLD", "detail": "SAR kecid zonasinda"}
+
+
+def aroon_t(df, period: int = 25):
+    """Aroon: yeni max yaxindirsa trend gucludur."""
+    up = ((period - (df["high"].tail(period)[::-1].to_numpy().argmax())) / period * 100)
+    dn = ((period - (df["low"].tail(period)[::-1].to_numpy().argmin())) / period * 100)
+    up, dn = float(up), float(dn)
+    if up > 70 and up > dn:
+        return {"name": "AROON", "signal": "BUY", "detail": f"AroonUp {up:.0f} yeni zirve yaxindir"}
+    if dn > 70 and dn > up:
+        return {"name": "AROON", "signal": "SELL", "detail": f"AroonDn {dn:.0f} yeni dib yaxindir"}
+    return {"name": "AROON", "signal": "HOLD", "detail": f"Up {up:.0f} / Dn {dn:.0f} qerarsiz"}
+
+
+def ichi_t(df):
+    """Ichimoku (sade): qiymet bulud ustu BUY, alti SELL."""
+    nine = df["high"].rolling(9).max() + df["low"].rolling(9).min()
+    nine = nine / 2.0
+    t26h = df["high"].rolling(26).max()
+    t26l = df["low"].rolling(26).min()
+    kijun = (t26h + t26l) / 2.0
+    span_a = ((nine + kijun) / 2.0).shift(26)
+    span_b = ((df["high"].rolling(52).max() + df["low"].rolling(52).min()) / 2.0).shift(26)
+    i = len(df) - 1
+    a, b = float(span_a.iloc[i]), float(span_b.iloc[i])
+    price = float(df["close"].iloc[-1])
+    if a != a or b != b:
+        return {"name": "ICHI", "signal": "HOLD", "detail": "Data azdir"}
+    top, bot = max(a, b), min(a, b)
+    if price > top:
+        return {"name": "ICHI", "signal": "BUY", "detail": f"Bulud {px(bot)}-{px(top)} ustunde"}
+    if price < bot:
+        return {"name": "ICHI", "signal": "SELL", "detail": f"Bulud {px(bot)}-{px(top)} altinda"}
+    return {"name": "ICHI", "signal": "HOLD", "detail": "Bulud icinde"}
+
+
+def zscore_t(df, period: int = 50):
+    """Ortalamadan kenarlasma: +2 SELL (geri donus), -2 BUY."""
+    sma = df["close"].rolling(period).mean()
+    std = df["close"].rolling(period).std().replace(0, float("nan"))
+    z = float(((df["close"] - sma) / std).iloc[-1])
+    if z != z:
+        return {"name": "ZSCORE", "signal": "HOLD", "detail": "Data azdir"}
+    if z > 2:
+        return {"name": "ZSCORE", "signal": "SELL", "detail": f"Z {z:.2f}: ortalama +2 sigma (siskin)"}
+    if z < -2:
+        return {"name": "ZSCORE", "signal": "BUY", "detail": f"Z {z:.2f}: ortalama -2 sigma (ucuz)"}
+    return {"name": "ZSCORE", "signal": "HOLD", "detail": f"Z {z:.2f} normal"}
+
+
+def candle_t(df):
+    """Sam formasi: cekic (BUY) / ulduz (SELL) / doji (HOLD)."""
+    o = float(df["open"].iloc[-1])
+    c = float(df["close"].iloc[-1])
+    h = float(df["high"].iloc[-1])
+    lo = float(df["low"].iloc[-1])
+    rng = h - lo
+    if not rng:
+        return {"name": "CANDLE", "signal": "HOLD", "detail": "Data azdir"}
+    body = abs(c - o)
+    upper = h - max(o, c)
+    lower = min(o, c) - lo
+    if body / rng < 0.1:
+        return {"name": "CANDLE", "signal": "HOLD", "detail": "Doji: qerarsizlik"}
+    if lower > 2 * body and upper < body:
+        return {"name": "CANDLE", "signal": "BUY", "detail": "Cekic: satici tukenib"}
+    if upper > 2 * body and lower < body:
+        return {"name": "CANDLE", "signal": "SELL", "detail": "Ulduz: alici tukenib"}
+    return {"name": "CANDLE", "signal": "HOLD", "detail": "Xususi forma yoxdur"}
+
+
 def fund_t(rates):
     """Funding ekstremleri (contrarian): cox musbet = SELL, cox menfi = BUY."""
     if not rates:
@@ -521,6 +709,16 @@ def extra_tactics(df, ema_fast: int = 20, ema_slow: int = 50, oi=None, funding=N
         pivot_t(df),
         supertrend_t(df),
         orb_t(df),
+        willr_t(df),
+        mfi_t(df),
+        streak_t(df),
+        kelt_t(df),
+        obv_t(df),
+        sar_t(df),
+        aroon_t(df),
+        ichi_t(df),
+        zscore_t(df),
+        candle_t(df),
         retest(df, ema_fast, ema_slow),
     ]
     if oi:

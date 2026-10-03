@@ -235,6 +235,16 @@ const DEFAULT_TACTICS = [
   {name: "PIVOT", desc: "Dunenki pivot: qiymet PP ustu BUY, alti SELL"},
   {name: "SUPER", desc: "Supertrend (10,3): xett alti BUY, ustu SELL"},
   {name: "ORB", desc: "Gunun ilk 60 deq diapazonu: yuxari qirilma BUY, asagi SELL"},
+  {name: "WILLR", desc: "Williams %R: -80 alti BUY, -20 ustu SELL"},
+  {name: "MFI", desc: "Hecmli RSI: 20 alti BUY, 80 ustu SELL"},
+  {name: "STREAK", desc: "4+ ardicil sam = tukenme, eksine"},
+  {name: "KELT", desc: "Keltner kanali qirilmasi istiqametinde"},
+  {name: "OBV", desc: "Volum trendi: yigim BUY, paylanma SELL"},
+  {name: "SAR", desc: "Parabolic SAR: alti destek BUY, ustu SELL"},
+  {name: "AROON", desc: "Yeni zirve/dib yaxinligi: Up guclu BUY"},
+  {name: "ICHI", desc: "Ichimoku buludu: ustu BUY, alti SELL"},
+  {name: "ZSCORE", desc: "Ortalamadan +-2 sigma kenarlasma = geri donus"},
+  {name: "CANDLE", desc: "Cekic BUY, ulduz SELL, doji gozle"},
 ];
 
 function renderTactics() {
@@ -456,7 +466,7 @@ updateAlBadge();
 for (const id of ["fBuy", "fSell"]) {
   const el = $(id), cur = el.value;
   el.innerHTML = "";
-  for (let i = 0; i <= 24; i++) {
+  for (let i = 0; i <= 34; i++) {
     const o = document.createElement("option");
     o.value = String(i); o.textContent = String(i);
     el.appendChild(o);
