@@ -109,6 +109,82 @@ def signal(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 200):
     return res
 
 
+@app.get("/api/backtest")
+def backtest(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 400,
+             sl_mult: float = 1.5, tp_mult: float = 3.0, max_hold: int = 50):
+    """Her taktika: tarixde siqnal verdiyi yerde gir, SL/TP ile cix. OI/FUND tarixce olmadigindan yoxdur."""
+    sym = symbol.replace("/", "").upper()
+    df = fetch_kline(sym, timeframe, min(limit, 1000))
+    df = add_indicators(df, config.EMA_FAST, config.EMA_SLOW,
+                        config.RSI_PERIOD, config.ATR_PERIOD)
+    opens = df["open"].to_numpy()
+    highs = df["high"].to_numpy()
+    lows = df["low"].to_numpy()
+    closes = df["close"].to_numpy()
+    atrs = df["atr"].to_numpy()
+    n = len(df)
+    stats: dict = {}
+    for i in range(60, n - 1):
+        sub = df.iloc[:i + 1]
+        try:
+            sigs = tactics_breakdown(sub, config.EMA_FAST, config.EMA_SLOW) + \
+                extra_tactics(sub, config.EMA_FAST, config.EMA_SLOW)
+        except Exception:
+            continue
+        atr_v = float(atrs[i])
+        if not atr_v or atr_v != atr_v:
+            continue
+        entry = float(opens[i + 1])
+        for s in sigs:
+            if s["signal"] not in ("BUY", "SELL"):
+                continue
+            d = 1 if s["signal"] == "BUY" else -1
+            sl = entry - d * sl_mult * atr_v
+            tp = entry + d * tp_mult * atr_v
+            risk = abs(entry - sl)
+            r = 0.0
+            for j in range(i + 1, min(i + 1 + max_hold, n)):
+                if d == 1:
+                    hit_sl = lows[j] <= sl
+                    hit_tp = highs[j] >= tp
+                else:
+                    hit_sl = highs[j] >= sl
+                    hit_tp = lows[j] <= tp
+                if hit_sl and hit_tp:
+                    r = -1.0
+                    break
+                if hit_sl:
+                    r = -1.0
+                    break
+                if hit_tp:
+                    r = tp_mult / sl_mult
+                    break
+            else:
+                jj = min(i + max_hold, n - 1)
+                r = ((closes[jj] - entry) * d) / risk if risk else 0.0
+            st = stats.setdefault(s["name"], {"trades": 0, "wins": 0, "gw": 0.0, "gl": 0.0})
+            st["trades"] += 1
+            if r > 0:
+                st["wins"] += 1
+                st["gw"] += r
+            else:
+                st["gl"] += -r
+    out = []
+    for name, st in stats.items():
+        t = st["trades"]
+        out.append({
+            "name": name,
+            "trades": t,
+            "winrate": round(st["wins"] / t * 100, 1) if t else 0,
+            "netR": round(st["gw"] - st["gl"], 1),
+            "profitFactor": round(st["gw"] / st["gl"], 2) if st["gl"] > 0 else None,
+        })
+    out.sort(key=lambda x: x["netR"], reverse=True)
+    return {"symbol": sym, "timeframe": timeframe, "bars": n,
+            "note": "OI/FUND tarixce seriyasi olmadigindan backtestde yoxdur",
+            "results": out}
+
+
 @app.get("/")
 def index():
     return FileResponse(os.path.join(WEB_DIR, "index.html"))

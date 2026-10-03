@@ -97,7 +97,7 @@ function render() {
 }
 
 async function openCoin(bybit) {
-  $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("coinView").hidden = false;
+  $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("backtestView").hidden = true; $("coinView").hidden = false;
   const t = S.items.find(x => x.bybit === bybit);
   setCoinTitle(t ? t.symbol : bybit, S.tf);
   $("coinInfo").textContent = (t ? t.symbol : bybit) + " — Bybit linear (USDT) cutluyu. Dovriye: " +
@@ -257,13 +257,28 @@ function renderJournal() {
 function router() {
   S.route = location.hash || "#/";
   $("aboutView").hidden = true; $("coinView").hidden = true;
-  $("tacticsView").hidden = true; $("journalView").hidden = true; $("listView").hidden = false;
+  $("tacticsView").hidden = true; $("journalView").hidden = true;
+  $("backtestView").hidden = true; $("listView").hidden = false;
   if (S.route.startsWith("#/coin/")) openCoin(S.route.split("/")[2]);
   else if (S.route === "#/about") { $("listView").hidden = true; $("aboutView").hidden = false; }
   else if (S.route === "#/tactics") { $("listView").hidden = true; $("tacticsView").hidden = false; renderTactics(); }
   else if (S.route === "#/journal") { $("listView").hidden = true; $("journalView").hidden = false; renderJournal(); }
+  else if (S.route === "#/backtest") { $("listView").hidden = true; $("backtestView").hidden = false; }
   else render();
 }
+
+$("bGo").onclick = async () => {
+  $("bGo").disabled = true;
+  $("bStatus").textContent = "Hesablanir, 1-2 deqiqe cheke biler...";
+  try {
+    const j = await (await fetch(`/api/backtest?symbol=${$("bSym").value.trim()}&timeframe=${$("bTf").value}&limit=${$("bLim").value}`)).json();
+    $("bStatus").textContent = `${j.symbol} ${j.timeframe}, ${j.bars} bar. ${j.note}`;
+    $("bOut").innerHTML = j.results.map(r =>
+      `<p><b>${r.name}</b>: ${r.trades} treyd · winrate <b class="${r.winrate >= 50 ? "up" : "down"}">${r.winrate}%</b> · net <b class="${r.netR >= 0 ? "up" : "down"}">${r.netR}R</b> · PF ${r.profitFactor ?? "-"}</p>`
+    ).join("") || "Siqnal tapilmadi.";
+  } catch (e) { $("bStatus").textContent = "Xeta: " + e; }
+  $("bGo").disabled = false;
+};
 
 $("burger").onclick = () => $("side").classList.add("open");
 $("closeSide").onclick = () => $("side").classList.remove("open");

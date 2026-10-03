@@ -23,6 +23,7 @@
   <a href="#/top" data-nav>Top 50 (dovriyyə)</a>
   <a href="#/tactics" data-nav>Taktikalar</a>
   <a href="#/journal" data-nav>Jurnal</a>
+  <a href="#/backtest" data-nav>Backtest</a>
   <a href="#/about" data-nav>Haqqında</a>
   <h3>Timeframe</h3>
   <div class="tfrow">
@@ -147,6 +148,23 @@
       <h3>Tarixçə</h3>
       <div id="jList"></div>
     </div>
+  </section>
+
+  <section id="backtestView" hidden>
+    <h2>Backtest — taktikalar həqiqətən işləyir?</h2>
+    <p class="muted">Keçmiş datada hər taktikanın siqnalı yoxlanılır (SL 1.5×ATR, TP 3×ATR). OI/FUND tarixçə olmadığı üçün yoxdur.</p>
+    <div class="card">
+      <div class="frow">
+        <label>Cutluk <input id="bSym" value="BTCUSDT"></label>
+        <label>Timeframe
+          <select id="bTf"><option value="15m">15m</option><option value="1h" selected>1h</option><option value="4h">4h</option></select>
+        </label>
+        <label>Bar <select id="bLim"><option value="200">200</option><option value="400" selected>400</option><option value="800">800</option></select></label>
+        <button id="bGo" class="morebtn">Yoxla</button>
+      </div>
+      <div id="bStatus" class="muted"></div>
+    </div>
+    <div class="card"><div id="bOut" class="muted">Hələ yoxlanılmayıb.</div></div>
   </section>
 
   <section id="aboutView" hidden>
