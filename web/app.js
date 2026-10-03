@@ -228,6 +228,11 @@ const DEFAULT_TACTICS = [
   {name: "BOLL", desc: "Bollinger: %B>1 SELL, %B<0 BUY, squeeze = gozle"},
   {name: "VWAP", desc: "Gunluk VWAP: qiymet ustunde BUY, altinda SELL"},
   {name: "FUND", desc: "Funding ekstremi (contrarian): + cox = SELL, - cox = BUY"},
+  {name: "STOCH", desc: "Asagida yuxari kesisme BUY, yuxarida asagi kesisme SELL"},
+  {name: "ADX", desc: "ADX 25+ gucunde +DI ustunluk: yuxari BUY, asagi SELL"},
+  {name: "CCI", desc: "CCI +100 ustu momentum BUY, -100 alti SELL"},
+  {name: "DONCH", desc: "20-bar qirilma: max ustu BUY, min alti SELL"},
+  {name: "PIVOT", desc: "Dunenki pivot: qiymet PP ustu BUY, alti SELL"},
 ];
 
 function renderTactics() {
@@ -449,7 +454,7 @@ updateAlBadge();
 for (const id of ["fBuy", "fSell"]) {
   const el = $(id), cur = el.value;
   el.innerHTML = "";
-  for (let i = 0; i <= 17; i++) {
+  for (let i = 0; i <= 22; i++) {
     const o = document.createElement("option");
     o.value = String(i); o.textContent = String(i);
     el.appendChild(o);

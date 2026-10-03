@@ -1,6 +1,8 @@
 """Her taktika ayrica BUY/SELL/HOLD deyir. Saytda qisa adla gorsenir."""
 import math
 
+import pandas as pd
+
 
 def px(x, sig: int = 4):
     """Qiymet format: boyukde 2, kicikde anlamli reqem."""
@@ -348,6 +350,96 @@ def vwap_t(df):
     return {"name": "VWAP", "signal": "SELL", "detail": f"Qiymet VWAP {px(float(v))} altinda"}
 
 
+def stoch_t(df, k: int = 14, d: int = 3):
+    """Stochastic: asagida yuxari kesisme BUY, yuxarida asagi kesisme SELL."""
+    lo = df["low"].rolling(k).min()
+    hi = df["high"].rolling(k).max()
+    kk = 100 * (df["close"] - lo) / (hi - lo).replace(0, float("nan"))
+    dd = kk.rolling(d).mean()
+    k0, k1 = float(kk.iloc[-1]), float(kk.iloc[-2])
+    d0 = float(dd.iloc[-1])
+    if k1 <= d0 and k0 > d0 and k0 < 30:
+        return {"name": "STOCH", "signal": "BUY", "detail": f"%K {k0:.1f} yuxari kesdi (asagi zona)"}
+    if k1 >= d0 and k0 < d0 and k0 > 70:
+        return {"name": "STOCH", "signal": "SELL", "detail": f"%K {k0:.1f} asagi kesdi (yuxari zona)"}
+    if k0 < 20:
+        return {"name": "STOCH", "signal": "BUY", "detail": f"%K {k0:.1f} hedden artiq satilib"}
+    if k0 > 80:
+        return {"name": "STOCH", "signal": "SELL", "detail": f"%K {k0:.1f} hedden artiq alinib"}
+    return {"name": "STOCH", "signal": "HOLD", "detail": f"%K {k0:.1f} ortada"}
+
+
+def adx_t(df, period: int = 14):
+    """ADX: 25+ gucunde +DI>-DI BUY, eksine SELL."""
+    up = df["high"].diff()
+    dn = -df["low"].diff()
+    plus_dm = up.where((up > dn) & (up > 0), 0.0)
+    minus_dm = dn.where((dn > up) & (dn > 0), 0.0)
+    prev_close = df["close"].shift(1)
+    tr = pd.concat([(df["high"] - df["low"]),
+                    (df["high"] - prev_close).abs(),
+                    (df["low"] - prev_close).abs()], axis=1).max(axis=1)
+    atr_s = tr.ewm(alpha=1 / period, adjust=False).mean().replace(0, float("nan"))
+    plus_di = 100 * plus_dm.ewm(alpha=1 / period, adjust=False).mean() / atr_s
+    minus_di = 100 * minus_dm.ewm(alpha=1 / period, adjust=False).mean() / atr_s
+    dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, float("nan"))
+    adx_v = float(dx.ewm(alpha=1 / period, adjust=False).mean().iloc[-1])
+    p, m = float(plus_di.iloc[-1]), float(minus_di.iloc[-1])
+    if adx_v != adx_v:
+        return {"name": "ADX", "signal": "HOLD", "detail": "Data azdir"}
+    if adx_v > 25 and p > m:
+        return {"name": "ADX", "signal": "BUY", "detail": f"ADX {adx_v:.1f} guclu trend yuxari"}
+    if adx_v > 25 and m > p:
+        return {"name": "ADX", "signal": "SELL", "detail": f"ADX {adx_v:.1f} guclu trend asagi"}
+    return {"name": "ADX", "signal": "HOLD", "detail": f"ADX {adx_v:.1f} zeif (trendsiz)"}
+
+
+def cci_t(df, period: int = 20):
+    """CCI momentum: +100 ustu BUY, -100 alti SELL."""
+    tp = (df["high"] + df["low"] + df["close"]) / 3.0
+    sma = tp.rolling(period).mean()
+    md = (tp - sma).abs().rolling(period).mean().replace(0, float("nan"))
+    cci_v = float(((tp - sma) / (0.015 * md)).iloc[-1])
+    if cci_v != cci_v:
+        return {"name": "CCI", "signal": "HOLD", "detail": "Data azdir"}
+    if cci_v > 100:
+        return {"name": "CCI", "signal": "BUY", "detail": f"CCI {cci_v:.0f} guclu momentum"}
+    if cci_v < -100:
+        return {"name": "CCI", "signal": "SELL", "detail": f"CCI {cci_v:.0f} guclu tezyiq"}
+    return {"name": "CCI", "signal": "HOLD", "detail": f"CCI {cci_v:.0f} neytral"}
+
+
+def donch_t(df, period: int = 20):
+    """Donchian qirilma: 20-bar max ustu BUY, min alti SELL."""
+    if len(df) < period + 1:
+        return {"name": "DONCH", "signal": "HOLD", "detail": "Data azdir"}
+    hi = float(df["high"].iloc[-(period + 1):-1].max())
+    lo = float(df["low"].iloc[-(period + 1):-1].min())
+    price = float(df["close"].iloc[-1])
+    if price >= hi:
+        return {"name": "DONCH", "signal": "BUY", "detail": f"20-bar max {px(hi)} qirildi"}
+    if price <= lo:
+        return {"name": "DONCH", "signal": "SELL", "detail": f"20-bar min {px(lo)} qirildi"}
+    return {"name": "DONCH", "signal": "HOLD", "detail": f"Kanal {px(lo)}-{px(hi)} icinde"}
+
+
+def pivot_t(df):
+    """Gunluk pivot: qiymet PP ustu BUY, alti SELL."""
+    d2 = df.copy()
+    d2["day"] = d2["datetime"].dt.strftime("%Y-%m-%d")
+    days = list(dict.fromkeys(d2["day"]))
+    if len(days) < 2:
+        return {"name": "PIVOT", "signal": "HOLD", "detail": "Data azdir"}
+    prev = d2[d2["day"] == days[-2]]
+    pp = (float(prev["high"].max()) + float(prev["low"].min()) + float(prev["close"].iloc[-1])) / 3.0
+    price = float(df["close"].iloc[-1])
+    if abs(price - pp) / pp < 0.002:
+        return {"name": "PIVOT", "signal": "HOLD", "detail": f"PP {px(pp)} ustunde mucadile"}
+    if price > pp:
+        return {"name": "PIVOT", "signal": "BUY", "detail": f"Qiymet PP {px(pp)} ustunde"}
+    return {"name": "PIVOT", "signal": "SELL", "detail": f"Qiymet PP {px(pp)} altinda"}
+
+
 def fund_t(rates):
     """Funding ekstremleri (contrarian): cox musbet = SELL, cox menfi = BUY."""
     if not rates:
@@ -374,6 +466,11 @@ def extra_tactics(df, ema_fast: int = 20, ema_slow: int = 50, oi=None, funding=N
         ema_cross(df, ema_fast, ema_slow),
         boll(df),
         vwap_t(df),
+        stoch_t(df),
+        adx_t(df),
+        cci_t(df),
+        donch_t(df),
+        pivot_t(df),
         retest(df, ema_fast, ema_slow),
     ]
     if oi:
