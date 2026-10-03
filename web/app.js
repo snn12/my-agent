@@ -49,9 +49,12 @@ function render() {
   $("count").textContent = items.length + " cutluk";
   $("listTitle").textContent = S.route === "#/top" ? "Top 50" : "Cutlukler";
   $("grid").innerHTML = items.slice(0, 300).map(coinCard).join("");
-  // marquee: ad + qiymet, yavas soldan saga hissi (css animasiya)
-  $("marquee").innerHTML = (S.items.slice(0, 80).map(t =>
-    `<span>${t.symbol} <b class="${dirCls(t.bybit, t.price)}">${fmt(t.price)}</b></span>`).join("")).repeat(2);
+  // marquee: ad + qiymet, yavas (css 170s). Reng: once canli istiqamet, yoxdursa 24s deyisimi.
+  const mitems = S.items.slice(0, 80).map(t => {
+    const c = dirCls(t.bybit, t.price) || (t.change24h >= 0 ? "up" : "down");
+    return `<span>${t.symbol} <b class="${c}">${fmt(t.price)}</b></span>`;
+  }).join("");
+  $("marquee").innerHTML = mitems + mitems;
   document.querySelectorAll("[data-more]").forEach(b => b.onclick = async (e) => {
     e.stopPropagation();
     const box = $("mini-" + b.dataset.more);
@@ -64,7 +67,7 @@ function render() {
 }
 
 async function openCoin(bybit) {
-  $("listView").hidden = true; $("aboutView").hidden = true; $("coinView").hidden = false;
+  $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("coinView").hidden = false;
   const t = S.items.find(x => x.bybit === bybit);
   $("coinTitle").textContent = (t ? t.symbol : bybit) + " / " + S.tf;
   $("coinInfo").textContent = (t ? t.symbol : bybit) + " — Bybit linear (USDT) cutluyu. Dovriye: " +
@@ -107,11 +110,36 @@ function renderCtx(sym) {
   $("saveCtx").onclick = () => { localStorage.setItem(k, $("ctxBox").value); alert("Saxlanildi. Sonra AI bu konteksti istifade edecek."); };
 }
 
+const DEFAULT_TACTICS = [
+  {name: "EMA", desc: "EMA20 vs EMA50: yuxaridirsa BUY, asagidirsa SELL"},
+  {name: "TREND", desc: "Qiymet EMA20 ustundeyse BUY, altindadirsa SELL"},
+  {name: "RSI", desc: "<30 BUY, >70 SELL, >55 BUY, <45 SELL, eks halda HOLD"},
+  {name: "MACD", desc: "Histogram musbetse BUY, menfidirse SELL, kesisme guclu siqnal"},
+];
+
+function renderTactics() {
+  const custom = JSON.parse(localStorage.getItem("custom-tactics") || "[]");
+  const all = DEFAULT_TACTICS.concat(custom);
+  $("tacticsList").innerHTML = all.map(t =>
+    `<div class="coin"><h3>${t.name}</h3><div class="meta">${t.desc}</div></div>`).join("");
+  $("tacAdd").onclick = () => {
+    const n = $("tacName").value.trim().toUpperCase().slice(0, 12);
+    const d = $("tacDesc").value.trim();
+    if (!n || !d) return;
+    custom.push({name: n, desc: d});
+    localStorage.setItem("custom-tactics", JSON.stringify(custom));
+    $("tacName").value = ""; $("tacDesc").value = "";
+    renderTactics();
+  };
+}
+
 function router() {
   S.route = location.hash || "#/";
-  $("aboutView").hidden = true; $("coinView").hidden = true; $("listView").hidden = false;
+  $("aboutView").hidden = true; $("coinView").hidden = true;
+  $("tacticsView").hidden = true; $("listView").hidden = false;
   if (S.route.startsWith("#/coin/")) openCoin(S.route.split("/")[2]);
   else if (S.route === "#/about") { $("listView").hidden = true; $("aboutView").hidden = false; }
+  else if (S.route === "#/tactics") { $("listView").hidden = true; $("tacticsView").hidden = false; renderTactics(); }
   else render();
 }
 

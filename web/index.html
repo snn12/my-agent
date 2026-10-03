@@ -21,6 +21,7 @@
   <h3>Menu</h3>
   <a href="#/" data-nav>Bütün cutluklər</a>
   <a href="#/top" data-nav>Top 50 (dovriyyə)</a>
+  <a href="#/tactics" data-nav>Taktikalar</a>
   <a href="#/about" data-nav>Haqqında</a>
   <h3>Timeframe</h3>
   <div class="tfrow">
@@ -60,6 +61,19 @@
       <h4>AI üçün kontekst (sən göndərəcək məlumatlar)</h4>
       <textarea id="ctxBox" placeholder="Məs: bu coin haqda xəbər, sənin fikrin... (brauzerdə saxlanılır)"></textarea>
       <button id="saveCtx">Saxla</button>
+    </div>
+  </section>
+
+  <section id="tacticsView" hidden>
+    <h2>Taktikalar</h2>
+    <p class="muted">Sən deyəcəyin taktikalar bura əlavə olunacaq. Adını de, mən kodla bura əlavə edim. Hələlik aktiv 4 taktika:</p>
+    <div id="tacticsList" class="grid"></div>
+    <div class="card">
+      <h3>Yeni taktika təklifi</h3>
+      <input id="tacName" placeholder="Qisa ad: Məs RSI2" style="width:100%;background:#0a0a0a;color:#fff;border:1px solid #3a3a3a;border-radius:8px;padding:8px">
+      <div style="height:8px"></div>
+      <textarea id="tacDesc" placeholder="Qayda: Məs RSI 25-den asagidirsa BUY"></textarea>
+      <button id="tacAdd" class="morebtn">Elave et</button>
     </div>
   </section>
 

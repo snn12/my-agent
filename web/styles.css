@@ -6,7 +6,7 @@
 .live{display:flex;align-items:center;gap:6px;font-size:13px;color:#a3a3a3}.dot{width:9px;height:9px;border-radius:50%;background:#22c55e;display:inline-block;animation:bl 2s infinite}
 @keyframes bl{50%{opacity:.3}}
 .marquee-wrap{overflow:hidden;background:#111111;border-block:1px solid #2a2a2a;white-space:nowrap}
-.marquee{display:inline-block;padding:8px 0;animation:mq 90s linear infinite;font-size:14px}
+.marquee{display:inline-block;padding:8px 0;animation:mq 170s linear infinite;font-size:14px}
 .marquee span{margin:0 18px}.up{color:#22c55e}.down{color:#ef4444}
 @keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .side{position:fixed;left:0;top:0;bottom:0;width:260px;background:#111111;padding:16px;transform:translateX(-105%);transition:.2s;z-index:10;border-right:1px solid #2a2a2a}
