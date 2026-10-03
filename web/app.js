@@ -360,7 +360,6 @@ function router() {
   if (S.route.startsWith("#/coin/")) openCoin(S.route.split("/")[2]);
   else if (S.route === "#/about") { $("listView").hidden = true; $("aboutView").hidden = false; }
   else if (S.route === "#/alerts") { $("listView").hidden = true; $("alertsView").hidden = false; renderAlertsPage(); }
-  else if (S.route === "#/about") { $("listView").hidden = true; $("aboutView").hidden = false; }
   else if (S.route === "#/tactics") { $("listView").hidden = true; $("tacticsView").hidden = false; renderTactics(); }
   else if (S.route === "#/journal") { $("listView").hidden = true; $("journalView").hidden = false; renderJournal(); }
   else if (S.route === "#/backtest") { $("listView").hidden = true; $("backtestView").hidden = false; }
