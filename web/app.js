@@ -48,7 +48,10 @@ function coinCard(t) {
 
 function render() {
   const q = $("search").value.trim().toUpperCase().replace("/", "");
+  const hideDead = $("fHideDead") && $("fHideDead").checked;
+  const STABLES = new Set(["USDCUSDT", "FDUSDUSDT", "USDEUSDT", "DAIUSDT", "TUSDUSDT", "USDPUSDT", "USDJUSDT", "GUSDUSDT", "PYUSDUSDT", "EURCUSDT", "EURIUSDT", "XAUTUSDT"]);
   let items = S.items;
+  if (hideDead) items = items.filter(t => !STABLES.has(t.bybit) && Math.abs(t.change24h) >= 0.5);
   if (S.route === "#/top") items = items.slice(0, 50);
   if (S.filter) items = items.filter(t => S.filter.list.includes(t.bybit));
   if (q) items = items.filter(t => t.bybit.includes(q));
@@ -383,6 +386,8 @@ $("burger").onclick = () => $("side").classList.add("open");
 $("closeSide").onclick = () => $("side").classList.remove("open");
 $("back").onclick = () => location.hash = "#/";
 $("search").oninput = render;
+$("fHideDead").onchange = () => { localStorage.setItem("hideDead", $("fHideDead").checked ? "1" : "0"); render(); };
+if (localStorage.getItem("hideDead") === "0") $("fHideDead").checked = false;
 $("fGo").onclick = applyTacticFilter;
 $("fClear").onclick = () => { S.filter = null; $("fStatus").textContent = ""; render(); };
 
