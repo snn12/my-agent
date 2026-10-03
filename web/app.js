@@ -1,5 +1,5 @@
 // Sadə SPA: siyahı + coin səhifəsi. Hər 2 dəqiqədən bir yenilənir.
-const S = { items: [], prev: {}, tf: "1h", route: location.hash || "#/", filter: null };
+const S = { items: [], prev: {}, tf: "1h", route: location.hash || "#/", filter: null, scan: null };
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => n >= 1000 ? n.toLocaleString("en-US", {maximumFractionDigits: 2}) : String(Math.round(n * 10000) / 10000);
 
@@ -23,13 +23,14 @@ async function loadTickers() {
   }
   S.items = j.items;
   render();
+  autoScan();
   // novbeti polling ucun cari qiymetler prev olur
   setTimeout(() => { for (const t of S.items) S.prev[t.bybit] = t.price; }, 1000);
 }
 
 function coinCard(t) {
   const cls = dirCls(t.bybit, t.price);
-  const fs = S.filter && S.filter.map[t.bybit];
+  const fs = t._fs || (S.filter && S.filter.map[t.bybit]) || (S.scan && S.scan.map[t.bybit]);
   const fline = fs ? `<div class="meta"><b>${fs.nb}/${fs.n} BUY · ${fs.ns}/${fs.n} SELL</b> — ${fs.signal} ${fs.conf}%</div>` : "";
   return `<div class="coin">
     <h3><a href="#/coin/${t.bybit}" style="color:#fff">${t.symbol}</a></h3>
@@ -50,9 +51,30 @@ function render() {
   if (S.route === "#/top") items = items.slice(0, 50);
   if (S.filter) items = items.filter(t => S.filter.list.includes(t.bybit));
   if (q) items = items.filter(t => t.bybit.includes(q));
+  // 3 bolme: SELL / BUY / NEYTRAL + gozleyenler
+  const sell = [], buy = [], ney = [], wait = [];
+  for (const t of items) {
+    const fs = (S.filter && S.filter.map[t.bybit]) || (S.scan && S.scan.map[t.bybit]);
+    t._fs = fs || null;
+    if (!fs) { wait.push(t); continue; }
+    if (fs.signal === "SHORT") sell.push(t);
+    else if (fs.signal === "LONG") buy.push(t);
+    else ney.push(t);
+  }
+  sell.sort((a, b) => b._fs.ns - a._fs.ns || b._fs.conf - a._fs.conf);
+  buy.sort((a, b) => b._fs.nb - a._fs.nb || b._fs.conf - a._fs.conf);
+  ney.sort((a, b) => ((b._fs.n - b._fs.nb - b._fs.ns) - (a._fs.n - a._fs.nb - a._fs.ns)));
   $("count").textContent = items.length + " cutluk";
   $("listTitle").textContent = S.route === "#/top" ? "Top 50" : "Cutlukler";
-  $("grid").innerHTML = items.map(coinCard).join("");
+  $("gridSell").innerHTML = sell.map(coinCard).join("");
+  $("gridBuy").innerHTML = buy.map(coinCard).join("");
+  $("gridNey").innerHTML = ney.map(coinCard).join("");
+  $("gridWait").innerHTML = wait.slice(0, 200).map(coinCard).join("");
+  $("cSell").textContent = sell.length ? `(${sell.length})` : "";
+  $("cBuy").textContent = buy.length ? `(${buy.length})` : "";
+  $("cNey").textContent = ney.length ? `(${ney.length})` : "";
+  $("cWait").textContent = wait.length ? `(${wait.length})` : "";
+  $("secWait").style.display = wait.length ? "" : "none";
   // marquee: ad + qiymet, yavas (css 170s). Reng: once canli istiqamet, yoxdursa 24s deyisimi.
   const mitems = S.items.slice(0, 80).map(t => {
     const c = dirCls(t.bybit, t.price) || (t.change24h >= 0 ? "up" : "down");
@@ -198,15 +220,10 @@ $("search").oninput = render;
 $("fGo").onclick = applyTacticFilter;
 $("fClear").onclick = () => { S.filter = null; $("fStatus").textContent = ""; render(); };
 
-async function applyTacticFilter() {
-  const minBuy = +$("fBuy").value, minSell = +$("fSell").value;
-  const sig = $("fSig").value, top = +$("fTop").value;
-  const cands = S.items.slice(0, top);
-  if (top >= 500) $("fStatus").textContent = `Top ${top}: bir nece deqiqe cheke biler, gozle...`;
-  $("fGo").disabled = true;
-  const map = {}, list = [];
-  let done = 0;
+async function scanCoins(cands, statusPrefix) {
+  if (!S.scan) S.scan = { map: {} };
   const CHUNK = 5;
+  let done = 0;
   for (let i = 0; i < cands.length; i += CHUNK) {
     const chunk = cands.slice(i, i + CHUNK);
     const res = await Promise.all(chunk.map(t =>
@@ -217,19 +234,44 @@ async function applyTacticFilter() {
       const n = s.tactics.length || 1;
       const nb = s.tactics.filter(x => x.signal === "BUY").length;
       const ns = s.tactics.filter(x => x.signal === "SELL").length;
-      map[cands[i + k].bybit] = { nb, ns, n, signal: s.signal, conf: s.confidence };
-      if (nb >= minBuy && ns >= minSell && (!sig || s.signal === sig)) list.push(cands[i + k].bybit);
+      S.scan.map[cands[i + k].bybit] = { nb, ns, n, signal: s.signal, conf: s.confidence };
     });
-    $("fStatus").textContent = `Yoxlanildi: ${done}/${cands.length} (${S.tf})...`;
+    $("fStatus").textContent = `${statusPrefix}: ${done}/${cands.length} (${S.tf})...`;
+    render();
   }
+  return S.scan.map;
+}
+
+function autoScan() {
+  if (S.scan || !S.items.length) return; // bir defe
+  S.scan = { map: {} };
+  scanCoins(S.items.slice(0, 50), "Avto-skan").then(() => {
+    $("fStatus").textContent = `Avto-skan bitdi: top 50 (${S.tf}). Daraltmaq üçün Filterlə.`;
+  });
+}
+
+async function applyTacticFilter() {
+  const minBuy = +$("fBuy").value, minSell = +$("fSell").value;
+  const sig = $("fSig").value, top = +$("fTop").value;
+  const cands = S.items.slice(0, top);
+  if (top >= 500) $("fStatus").textContent = `Top ${top}: bir nece deqiqe cheke biler, gozle...`;
+  $("fGo").disabled = true;
+  await scanCoins(cands, "Yoxlanilir");
   $("fGo").disabled = false;
-  S.filter = { minBuy, minSell, sig, top, list, map };
+  const list = cands.filter(t => {
+    const m = S.scan.map[t.bybit];
+    if (!m) return false;
+    return m.nb >= minBuy && m.ns >= minSell && (!sig || m.signal === sig);
+  }).map(t => t.bybit);
+  S.filter = { minBuy, minSell, sig, top, list, map: S.scan.map };
   $("fStatus").textContent = `Netice: ${list.length} cutluk (min ${minBuy} BUY, min ${minSell} SELL${sig ? ", " + sig : ""}, top ${top}, ${S.tf})`;
   render();
 }
 document.querySelectorAll("[data-tf]").forEach(b => b.onclick = () => {
   document.querySelectorAll("[data-tf]").forEach(x => x.classList.remove("on"));
-  b.classList.add("on"); S.tf = b.dataset.tf; router();
+  b.classList.add("on"); S.tf = b.dataset.tf;
+  S.scan = null; S.filter = null; $("fStatus").textContent = "";
+  router(); autoScan();
 });
 window.addEventListener("hashchange", router);
 for (const id of ["fBuy", "fSell"]) {
