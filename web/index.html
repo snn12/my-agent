@@ -35,6 +35,33 @@
 <main>
   <section id="listView">
     <div class="row"><h2 id="listTitle">Cutluklər</h2><span id="count"></span></div>
+    <div class="card">
+      <div class="frow">
+        <label>Min BUY
+          <select id="fBuy">
+            <option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          </select>
+        </label>
+        <label>Min SELL
+          <select id="fSell">
+            <option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          </select>
+        </label>
+        <label>Siqnal
+          <select id="fSig">
+            <option value="" selected>Hamisi</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option><option value="NEYTRAL">NEYTRAL</option>
+          </select>
+        </label>
+        <label>Top
+          <select id="fTop">
+            <option value="30">30</option><option value="50" selected>50</option><option value="100">100</option>
+          </select>
+        </label>
+        <button id="fGo" class="morebtn">Filterle</button>
+        <button id="fClear" class="morebtn">Temizle</button>
+      </div>
+      <div id="fStatus" class="muted"></div>
+    </div>
     <div id="grid" class="grid"></div>
   </section>
 

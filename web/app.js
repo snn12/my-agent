@@ -1,5 +1,5 @@
 // Sadə SPA: siyahı + coin səhifəsi. Hər 2 dəqiqədən bir yenilənir.
-const S = { items: [], prev: {}, tf: "1h", route: location.hash || "#/" };
+const S = { items: [], prev: {}, tf: "1h", route: location.hash || "#/", filter: null };
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => n >= 1000 ? n.toLocaleString("en-US", {maximumFractionDigits: 2}) : String(Math.round(n * 10000) / 10000);
 
@@ -29,10 +29,13 @@ async function loadTickers() {
 
 function coinCard(t) {
   const cls = dirCls(t.bybit, t.price);
+  const fs = S.filter && S.filter.map[t.bybit];
+  const fline = fs ? `<div class="meta"><b>${fs.nb}/${fs.n} BUY · ${fs.ns}/${fs.n} SELL</b> — ${fs.signal} ${fs.conf}%</div>` : "";
   return `<div class="coin">
     <h3><a href="#/coin/${t.bybit}" style="color:#fff">${t.symbol}</a></h3>
     <div class="p ${cls}">${fmt(t.price)}</div>
     <div class="meta">24s: <span class="${t.change24h >= 0 ? "up" : "down"}">${t.change24h.toFixed(2)}%</span></div>
+    ${fline}
     <div style="margin-top:8px;display:flex;gap:6px">
       <button class="morebtn" data-more="${t.bybit}">More: taktikalar</button>
       <a href="#/coin/${t.bybit}"><button class="morebtn">Aç →</button></a>
@@ -45,6 +48,7 @@ function render() {
   const q = $("search").value.trim().toUpperCase().replace("/", "");
   let items = S.items;
   if (S.route === "#/top") items = items.slice(0, 50);
+  if (S.filter) items = items.filter(t => S.filter.list.includes(t.bybit));
   if (q) items = items.filter(t => t.bybit.includes(q));
   $("count").textContent = items.length + " cutluk";
   $("listTitle").textContent = S.route === "#/top" ? "Top 50" : "Cutlukler";
@@ -165,6 +169,37 @@ $("burger").onclick = () => $("side").classList.add("open");
 $("closeSide").onclick = () => $("side").classList.remove("open");
 $("back").onclick = () => location.hash = "#/";
 $("search").oninput = render;
+$("fGo").onclick = applyTacticFilter;
+$("fClear").onclick = () => { S.filter = null; $("fStatus").textContent = ""; render(); };
+
+async function applyTacticFilter() {
+  const minBuy = +$("fBuy").value, minSell = +$("fSell").value;
+  const sig = $("fSig").value, top = +$("fTop").value;
+  const cands = S.items.slice(0, top);
+  $("fGo").disabled = true;
+  const map = {}, list = [];
+  let done = 0;
+  const CHUNK = 5;
+  for (let i = 0; i < cands.length; i += CHUNK) {
+    const chunk = cands.slice(i, i + CHUNK);
+    const res = await Promise.all(chunk.map(t =>
+      fetch(`/api/signal?symbol=${t.bybit}&timeframe=${S.tf}`).then(r => r.json()).catch(() => null)));
+    res.forEach((s, k) => {
+      done++;
+      if (!s || !s.tactics) return;
+      const n = s.tactics.length || 1;
+      const nb = s.tactics.filter(x => x.signal === "BUY").length;
+      const ns = s.tactics.filter(x => x.signal === "SELL").length;
+      map[cands[i + k].bybit] = { nb, ns, n, signal: s.signal, conf: s.confidence };
+      if (nb >= minBuy && ns >= minSell && (!sig || s.signal === sig)) list.push(cands[i + k].bybit);
+    });
+    $("fStatus").textContent = `Yoxlanildi: ${done}/${cands.length} (${S.tf})...`;
+  }
+  $("fGo").disabled = false;
+  S.filter = { minBuy, minSell, sig, top, list, map };
+  $("fStatus").textContent = `Netice: ${list.length} cutluk (min ${minBuy} BUY, min ${minSell} SELL${sig ? ", " + sig : ""}, top ${top}, ${S.tf})`;
+  render();
+}
 document.querySelectorAll("[data-tf]").forEach(b => b.onclick = () => {
   document.querySelectorAll("[data-tf]").forEach(x => x.classList.remove("on"));
   b.classList.add("on"); S.tf = b.dataset.tf; router();
