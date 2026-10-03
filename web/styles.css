@@ -27,4 +27,6 @@ main{padding:16px;max-width:1100px;margin:0 auto}
 .reasons{margin-top:8px;color:#d4d4d4;font-size:14px}
 textarea{width:100%;min-height:64px;background:#0a0a0a;color:#fff;border:1px solid #3a3a3a;border-radius:8px;padding:8px}
 button#addReview,button#saveCtx,button#back{background:#e5e5e5;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:700;margin-top:6px;color:#000}
+.coin-head{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.tac-summary{font-size:14px;font-weight:700;background:#141414;border:1px solid #2e2e2e;border-radius:10px;padding:8px 12px;white-space:nowrap}
 .muted{color:#a3a3a3}.price-line{font-size:18px}

@@ -61,7 +61,11 @@ function render() {
     if (!box.hidden) { box.hidden = true; return; }
     box.textContent = "yuklenir..."; box.hidden = false;
     const s = await (await fetch(`/api/signal?symbol=${b.dataset.more}&timeframe=${S.tf}`)).json();
-    box.innerHTML = s.tactics.map(t => `${t.name}: <b>${t.signal}</b> (${t.detail})`).join("<br>") +
+    const n = s.tactics.length || 1;
+    const nb = s.tactics.filter(t => t.signal === "BUY").length;
+    const ns = s.tactics.filter(t => t.signal === "SELL").length;
+    box.innerHTML = `<b>${nb}/${n} BUY · ${ns}/${n} SELL</b><br>` +
+      s.tactics.map(t => `${t.name}: <b>${t.signal}</b> (${t.detail})`).join("<br>") +
       `<br>Umumi: <b>${s.signal}</b> ${s.confidence}%`;
   });
 }
@@ -81,6 +85,12 @@ async function openCoin(bybit) {
     $("coinPrice").textContent = fmt(s.price);
     $("coinPrice").className = cls;
     $("coinChg").textContent = `RSI ${s.rsi} | ATR ${s.atr} | stop ~${s.suggested_stop_dist}`;
+    const n = s.tactics.length || 1;
+    const nb = s.tactics.filter(t => t.signal === "BUY").length;
+    const ns = s.tactics.filter(t => t.signal === "SELL").length;
+    const nh = s.tactics.filter(t => t.signal !== "BUY" && t.signal !== "SELL").length;
+    $("tacSummary").innerHTML =
+      `<span class="up">${nb}/${n} BUY</span> · <span class="down">${ns}/${n} SELL</span> · <span class="muted">${nh}/${n} HOLD</span>`;
     const bcls = s.signal === "LONG" ? "b-long" : (s.signal === "SHORT" ? "b-short" : "b-neytral");
     $("coinSignal").innerHTML = `<span class="badge ${bcls}">${s.signal}</span> skor ${s.score} | inam ${s.confidence}%`;
     $("tactics").innerHTML = s.tactics.map(x => {
