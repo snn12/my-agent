@@ -233,6 +233,8 @@ const DEFAULT_TACTICS = [
   {name: "CCI", desc: "CCI +100 ustu momentum BUY, -100 alti SELL"},
   {name: "DONCH", desc: "20-bar qirilma: max ustu BUY, min alti SELL"},
   {name: "PIVOT", desc: "Dunenki pivot: qiymet PP ustu BUY, alti SELL"},
+  {name: "SUPER", desc: "Supertrend (10,3): xett alti BUY, ustu SELL"},
+  {name: "ORB", desc: "Gunun ilk 60 deq diapazonu: yuxari qirilma BUY, asagi SELL"},
 ];
 
 function renderTactics() {
@@ -454,7 +456,7 @@ updateAlBadge();
 for (const id of ["fBuy", "fSell"]) {
   const el = $(id), cur = el.value;
   el.innerHTML = "";
-  for (let i = 0; i <= 22; i++) {
+  for (let i = 0; i <= 24; i++) {
     const o = document.createElement("option");
     o.value = String(i); o.textContent = String(i);
     el.appendChild(o);

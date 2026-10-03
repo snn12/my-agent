@@ -3,6 +3,8 @@ import math
 
 import pandas as pd
 
+from src.indicators import atr
+
 
 def px(x, sig: int = 4):
     """Qiymet format: boyukde 2, kicikde anlamli reqem."""
@@ -440,6 +442,52 @@ def pivot_t(df):
     return {"name": "PIVOT", "signal": "SELL", "detail": f"Qiymet PP {px(pp)} altinda"}
 
 
+def supertrend_t(df, period: int = 10, mult: float = 3.0):
+    """Supertrend: yasil xett alti BUY, qirmizi ustu SELL."""
+    hl2 = ((df["high"] + df["low"]) / 2.0).to_numpy()
+    atr_s = atr(df, period).to_numpy()
+    n = len(df)
+    up = hl2 - mult * atr_s
+    lo = hl2 + mult * atr_s
+    direction = [1] * n
+    st = [0.0] * n
+    for i in range(1, n):
+        if hl2[i] > lo[i - 1]:
+            direction[i] = 1
+        elif hl2[i] < up[i - 1]:
+            direction[i] = -1
+        else:
+            direction[i] = direction[i - 1]
+            if direction[i] == 1 and up[i] < up[i - 1]:
+                up[i] = up[i - 1]
+            if direction[i] == -1 and lo[i] > lo[i - 1]:
+                lo[i] = lo[i - 1]
+        st[i] = up[i] if direction[i] == 1 else lo[i]
+    if direction[-1] == 1:
+        return {"name": "SUPER", "signal": "BUY", "detail": f"Supertrend {px(st[-1])} alti"}
+    return {"name": "SUPER", "signal": "SELL", "detail": f"Supertrend {px(st[-1])} ustu"}
+
+
+def orb_t(df, open_minutes: int = 60):
+    """Opening Range Breakout: gunun ilk saatliq diapazon qirilma."""
+    d2 = df.copy()
+    d2["day"] = d2["datetime"].dt.strftime("%Y-%m-%d")
+    today = d2["day"].iloc[-1]
+    td = d2[d2["day"] == today]
+    start = td["datetime"].iloc[0]
+    opening = td[td["datetime"] <= start + pd.to_timedelta(open_minutes, unit="m")]
+    if len(opening) < 1 or len(td) <= len(opening):
+        return {"name": "ORB", "signal": "HOLD", "detail": "Opening range hele qurulur"}
+    orh = float(opening["high"].max())
+    orl = float(opening["low"].min())
+    price = float(df["close"].iloc[-1])
+    if price > orh:
+        return {"name": "ORB", "signal": "BUY", "detail": f"OR {px(orl)}-{px(orh)} yuxari qirildi"}
+    if price < orl:
+        return {"name": "ORB", "signal": "SELL", "detail": f"OR {px(orl)}-{px(orh)} asagi qirildi"}
+    return {"name": "ORB", "signal": "HOLD", "detail": f"OR {px(orl)}-{px(orh)} icinde"}
+
+
 def fund_t(rates):
     """Funding ekstremleri (contrarian): cox musbet = SELL, cox menfi = BUY."""
     if not rates:
@@ -471,6 +519,8 @@ def extra_tactics(df, ema_fast: int = 20, ema_slow: int = 50, oi=None, funding=N
         cci_t(df),
         donch_t(df),
         pivot_t(df),
+        supertrend_t(df),
+        orb_t(df),
         retest(df, ema_fast, ema_slow),
     ]
     if oi:
