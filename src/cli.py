@@ -1,6 +1,12 @@
-"""Terminal girişi: python -m src.cli --symbol BTC/USDT --timeframe 1h"""
+"""Terminal girisi: python -m src.cli --symbol BTC/USDT --timeframe 1h"""
 import argparse
 import json
+import sys
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
 
 import config
 from src.data import fetch_ohlcv
@@ -35,9 +41,9 @@ def main():
 
     for r in results:
         print(f"\n=== {r['symbol']} {r['timeframe']} @ {r['price']} ===")
-        print(f"Siqnal: {r['signal']} | Skor: {r['score']} | İnam: {r['confidence']}%")
-        print(f"RSI: {r['rsi']} | ATR: {r['atr']} ({r['atr_pct']}%) | Stop məsafə (~1.5xATR): {r['suggested_stop_dist']}")
-        print("Səbəblər:")
+        print(f"Siqnal: {r['signal']} | Skor: {r['score']} | Inam: {r['confidence']}%")
+        print(f"RSI: {r['rsi']} | ATR: {r['atr']} ({r['atr_pct']}%) | Stop mesafe (~1.5xATR): {r['suggested_stop_dist']}")
+        print("Sebebler:")
         for line in r["reasons"]:
             print(f"  - {line}")
 
