@@ -40,6 +40,32 @@ def signal(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 200):
     res["symbol"] = sym
     res["display"] = sym[:-4] + "/USDT" if sym.endswith("USDT") else sym
     res["timeframe"] = timeframe
+    # TP/SL seviyeleri: giris = son baglanis, ATR + son 50 bar min/max
+    try:
+        entry = float(df["close"].iloc[-1])
+        atr_v = float(df["atr"].iloc[-1])
+        win = df.tail(50)
+        sh = float(win["high"].max())
+        slw = float(win["low"].min())
+        prec = 5 if entry < 1 else (3 if entry < 100 else 2)
+        res["levels"] = {
+            "entry": round(entry, prec),
+            "atr": round(atr_v, prec),
+            "swing_high_50": round(sh, prec),
+            "swing_low_50": round(slw, prec),
+            "long": {
+                "sl": round(entry - 1.5 * atr_v, prec),
+                "tp1": round(entry + 1.0 * atr_v, prec),
+                "tp2": round(entry + 2.0 * atr_v, prec),
+            },
+            "short": {
+                "sl": round(entry + 1.5 * atr_v, prec),
+                "tp1": round(entry - 1.0 * atr_v, prec),
+                "tp2": round(entry - 2.0 * atr_v, prec),
+            },
+        }
+    except Exception:
+        res["levels"] = None
     return res
 
 

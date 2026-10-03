@@ -76,9 +76,10 @@ async function openCoin(bybit) {
   $("coinTitle").textContent = (t ? t.symbol : bybit) + " / " + S.tf;
   $("coinInfo").textContent = (t ? t.symbol : bybit) + " — Bybit linear (USDT) cutluyu. Dovriye: " +
     (t ? fmt(t.turnover24h) + " USDT" : "-");
-  renderReviews(bybit); renderCtx(bybit);
+  renderCtx(bybit);
   $("coinPrice").textContent = "yuklenir..."; $("coinSignal").textContent = "";
   $("tactics").innerHTML = ""; $("coinReasons").hidden = true;
+  $("levels").textContent = "yuklenir...";
   try {
     const s = await (await fetch(`/api/signal?symbol=${bybit}&timeframe=${S.tf}`)).json();
     const cls = dirCls(bybit, s.price);
@@ -101,19 +102,17 @@ async function openCoin(bybit) {
     btn.className = "morebtn"; btn.textContent = "More: tam sebebler";
     btn.onclick = () => { const r = $("coinReasons"); r.hidden = !r.hidden; r.innerHTML = s.reasons.map(x => "- " + x).join("<br>"); };
     $("coinSignal").appendChild(document.createElement("br")); $("coinSignal").appendChild(btn);
+    if (s.levels) {
+      const L = s.levels;
+      $("levels").innerHTML =
+        `Giris: <b>${fmt(L.entry)}</b> (ATR ${L.atr})<br>` +
+        `<span class="up">LONG</span> → SL <b class="down">${fmt(L.long.sl)}</b> · TP1 <b class="up">${fmt(L.long.tp1)}</b> · TP2 <b class="up">${fmt(L.long.tp2)}</b><br>` +
+        `<span class="down">SHORT</span> → SL <b class="down">${fmt(L.short.sl)}</b> · TP1 <b class="up">${fmt(L.short.tp1)}</b> · TP2 <b class="up">${fmt(L.short.tp2)}</b><br>` +
+        `<span class="muted">Son 50 bar: max ${fmt(L.swing_high_50)} / min ${fmt(L.swing_low_50)}</span>`;
+    } else { $("levels").textContent = "hesablanmadi"; }
   } catch (e) { $("coinPrice").textContent = "xeta: " + e; }
 }
 
-function renderReviews(sym) {
-  const k = "rev-" + sym;
-  const arr = JSON.parse(localStorage.getItem(k) || "[]");
-  $("reviews").innerHTML = arr.length ? arr.map(x => `<p>• ${x}</p>`).join("") : `<p class="muted">Hələ rəy yoxdur.</p>`;
-  $("addReview").onclick = () => {
-    const v = $("reviewBox").value.trim(); if (!v) return;
-    arr.push(v); localStorage.setItem(k, JSON.stringify(arr));
-    $("reviewBox").value = ""; renderReviews(sym);
-  };
-}
 function renderCtx(sym) {
   const k = "ctx-" + sym;
   $("ctxBox").value = localStorage.getItem(k) || "";
