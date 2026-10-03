@@ -106,6 +106,14 @@ async function openCoin(bybit) {
   $("coinPrice").textContent = "yuklenir..."; $("coinSignal").textContent = "";
   $("tactics").innerHTML = ""; $("coinReasons").hidden = true;
   $("levels").textContent = "yuklenir...";
+  $("combo").textContent = "yuklenir (ilk defe 1-2 deqiqe)...";
+  fetch(`/api/combo?symbol=${bybit}&timeframe=${S.tf}`).then(r => r.json()).then(c => {
+    const vc = c.verdict === "LONG" ? "b-long" : (c.verdict === "SHORT" ? "b-short" : "b-neytral");
+    $("combo").innerHTML = `<span class="badge ${vc}">${c.verdict}</span> BUY ${c.buyScore} vs SELL ${c.sellScore}<br>` +
+      (c.used.length ? c.used.map(u => `${u.name} (${u.weight}R): <b>${u.signal}</b>`).join("<br>")
+        : "Keçmişdə qazandıran taktika yoxdur — hamısı HOLD.") +
+      (c.cached ? `<br><span class="muted">keşdən</span>` : "");
+  }).catch(e => { $("combo").textContent = "Xeta: " + e; });
   try {
     const s = await (await fetch(`/api/signal?symbol=${bybit}&timeframe=${S.tf}`)).json();
     const cls = dirCls(bybit, s.price);

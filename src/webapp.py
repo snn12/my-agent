@@ -114,7 +114,55 @@ def backtest(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 400,
              sl_mult: float = 1.5, tp_mult: float = 3.0, max_hold: int = 50):
     """Her taktika: tarixde siqnal verdiyi yerde gir, SL/TP ile cix. OI/FUND tarixce olmadigindan yoxdur."""
     sym = symbol.replace("/", "").upper()
-    df = fetch_kline(sym, timeframe, min(limit, 1000))
+    results, n = run_backtest(sym, timeframe, min(limit, 1000), sl_mult, tp_mult, max_hold)
+    return {"symbol": sym, "timeframe": timeframe, "bars": n,
+            "note": "OI/FUND tarixce seriyasi olmadigindan backtestde yoxdur",
+            "results": results}
+
+
+_COMBO_CACHE: dict = {}
+_COMBO_TTL = 6 * 3600
+
+
+@app.get("/api/combo")
+def combo(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 400):
+    """En yaxsilarin birliyi: backtestde musbet netR verenlerin cekili sesi."""
+    import time
+    sym = symbol.replace("/", "").upper()
+    key = (sym, timeframe)
+    now = time.time()
+    hit = _COMBO_CACHE.get(key)
+    if hit and now - hit["ts"] < _COMBO_TTL:
+        weights = hit["weights"]
+    else:
+        results, _ = run_backtest(sym, timeframe, min(limit, 1000))
+        weights = {r["name"]: r["netR"] for r in results if r["netR"] > 0 and r["trades"] >= 5}
+        _COMBO_CACHE[key] = {"ts": now, "weights": weights}
+    cur = signal(symbol=sym, timeframe=timeframe, limit=200)
+    b = s_ = 0.0
+    parts = []
+    for t in cur.get("tactics", []):
+        w = weights.get(t["name"], 0.0)
+        if w <= 0:
+            continue
+        if t["signal"] == "BUY":
+            b += w
+        elif t["signal"] == "SELL":
+            s_ += w
+        parts.append({"name": t["name"], "signal": t["signal"], "weight": round(w, 1)})
+    verdict = "NEYTRAL"
+    if b > s_ * 1.2:
+        verdict = "LONG"
+    elif s_ > b * 1.2:
+        verdict = "SHORT"
+    return {"symbol": sym, "timeframe": timeframe, "verdict": verdict,
+            "buyScore": round(b, 1), "sellScore": round(s_, 1),
+            "used": sorted(parts, key=lambda x: x["weight"], reverse=True),
+            "cached": bool(hit and now - hit["ts"] < _COMBO_TTL)}
+
+
+def run_backtest(sym, timeframe, limit, sl_mult=1.5, tp_mult=3.0, max_hold=50):
+    df = fetch_kline(sym, timeframe, limit)
     df = add_indicators(df, config.EMA_FAST, config.EMA_SLOW,
                         config.RSI_PERIOD, config.ATR_PERIOD)
     opens = df["open"].to_numpy()
@@ -180,9 +228,7 @@ def backtest(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 400,
             "profitFactor": round(st["gw"] / st["gl"], 2) if st["gl"] > 0 else None,
         })
     out.sort(key=lambda x: x["netR"], reverse=True)
-    return {"symbol": sym, "timeframe": timeframe, "bars": n,
-            "note": "OI/FUND tarixce seriyasi olmadigindan backtestde yoxdur",
-            "results": out}
+    return out, n
 
 
 @app.get("/")
