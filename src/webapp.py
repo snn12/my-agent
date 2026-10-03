@@ -57,7 +57,7 @@ def signal(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 200):
         sh = float(win["high"].max())
         slw = float(win["low"].min())
         prec = 5 if entry < 1 else (3 if entry < 100 else 2)
-        res["levels"] = {
+        lv = {
             "entry": round(entry, prec),
             "atr": round(atr_v, prec),
             "swing_high_50": round(sh, prec),
@@ -73,6 +73,26 @@ def signal(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 200):
                 "tp2": round(entry - 2.0 * atr_v, prec),
             },
         }
+        # Evvelki ayin max/min-i (hedef xetleri). Esas df-de tam ay yoxdursa 1h-dan 1000 bar cek.
+        try:
+            d2 = df.copy()
+            d2["ym"] = d2["datetime"].dt.strftime("%Y-%m")
+            months = list(dict.fromkeys(d2["ym"]))
+            if len(months) >= 2:
+                pm = d2[d2["ym"] == months[-2]]
+                lv["prev_month_high"] = round(float(pm["high"].max()), prec)
+                lv["prev_month_low"] = round(float(pm["low"].min()), prec)
+            else:
+                hdf = fetch_kline(sym, "1h", 1000)
+                hdf["ym"] = hdf["datetime"].dt.strftime("%Y-%m")
+                hm = list(dict.fromkeys(hdf["ym"]))
+                if len(hm) >= 2:
+                    pm = hdf[hdf["ym"] == hm[-2]]
+                    lv["prev_month_high"] = round(float(pm["high"].max()), prec)
+                    lv["prev_month_low"] = round(float(pm["low"].min()), prec)
+        except Exception:
+            pass
+        res["levels"] = lv
     except Exception:
         res["levels"] = None
     return res

@@ -121,6 +121,69 @@ def retest(df, ema_fast: int = 20, ema_slow: int = 50, lookback: int = 20):
     return {"name": "RETEST", "signal": "HOLD", "detail": f"Cemi {touches} retest"}
 
 
+def amd(df, lookback: int = 30):
+    """AMD (sade): range + kenar sweep + genis govde = manipulationdan distribution-a."""
+    if len(df) < lookback + 2:
+        return {"name": "AMD", "signal": "HOLD", "detail": "Data azdir"}
+    win = df.iloc[-(lookback + 1):-1]
+    rng_hi = float(win["high"].max())
+    rng_lo = float(win["low"].min())
+    o = float(df["open"].iloc[-1])
+    c = float(df["close"].iloc[-1])
+    hi = float(df["high"].iloc[-1])
+    lo = float(df["low"].iloc[-1])
+    atr_v = float(df["atr"].iloc[-1]) or 1.0
+    body = abs(c - o)
+    if lo < rng_lo and c > rng_lo and c > o and body > 1.5 * atr_v:
+        return {"name": "AMD", "signal": "BUY",
+                "detail": f"Low sweep {rng_lo:.2f} + genis govde (bear trap)"}
+    if hi > rng_hi and c < rng_hi and o > c and body > 1.5 * atr_v:
+        return {"name": "AMD", "signal": "SELL",
+                "detail": f"High sweep {rng_hi:.2f} + genis govde (bull trap)"}
+    return {"name": "AMD", "signal": "HOLD", "detail": f"Range {rng_lo:.2f}-{rng_hi:.2f}"}
+
+
+def poc(df, lookback: int = 100, buckets: int = 50):
+    """Volume-at-price (sade): POC + value area 70%. Ustunde qebul = BUY."""
+    win = df.tail(lookback)
+    hi = float(win["high"].max())
+    lo = float(win["low"].min())
+    if hi <= lo:
+        return {"name": "POC", "signal": "HOLD", "detail": "Data azdir"}
+    width = (hi - lo) / buckets
+    vols = [0.0] * buckets
+    for _, r in win.iterrows():
+        v = float(r["volume"])
+        a = max(0, min(buckets - 1, int((float(r["low"]) - lo) / width)))
+        b = max(0, min(buckets - 1, int((float(r["high"]) - lo) / width)))
+        if b < a:
+            a, b = b, a
+        share = v / max(b - a + 1, 1)
+        for k in range(a, b + 1):
+            vols[k] += share
+    poc_i = max(range(buckets), key=lambda k: vols[k])
+    poc_price = lo + (poc_i + 0.5) * width
+    order = sorted(range(buckets), key=lambda k: vols[k], reverse=True)
+    total = sum(vols) or 1.0
+    acc, va = 0.0, []
+    for k in order:
+        acc += vols[k]
+        va.append(k)
+        if acc >= 0.7 * total:
+            break
+    vah = lo + (max(va) + 1) * width
+    val = lo + min(va) * width
+    price = float(df["close"].iloc[-1])
+    if price > vah:
+        return {"name": "POC", "signal": "BUY",
+                "detail": f"VAH {vah:.2f} ustunde qebul (POC {poc_price:.2f})"}
+    if price < val:
+        return {"name": "POC", "signal": "SELL",
+                "detail": f"VAL {val:.2f} altinda redd (POC {poc_price:.2f})"}
+    return {"name": "POC", "signal": "HOLD",
+            "detail": f"Value area icinde {val:.2f}-{vah:.2f}"}
+
+
 def oi_tactic(df, oi: list):
     """Qiymet + OI: yeni pul vs baglanis. 24 barliq pencere."""
     if len(oi) < 25 or len(df) < 25:
@@ -159,6 +222,8 @@ def extra_tactics(df, ema_fast: int = 20, ema_slow: int = 50, oi=None):
         fvg(df),
         engulf(df),
         turtle(df),
+        amd(df),
+        poc(df),
         retest(df, ema_fast, ema_slow),
     ]
     if oi:

@@ -22,6 +22,7 @@
   <a href="#/" data-nav>Bütün cutluklər</a>
   <a href="#/top" data-nav>Top 50 (dovriyyə)</a>
   <a href="#/tactics" data-nav>Taktikalar</a>
+  <a href="#/journal" data-nav>Jurnal</a>
   <a href="#/about" data-nav>Haqqında</a>
   <h3>Timeframe</h3>
   <div class="tfrow">
@@ -117,6 +118,32 @@
       <div style="height:8px"></div>
       <textarea id="tacDesc" placeholder="Qayda: Məs RSI 25-den asagidirsa BUY"></textarea>
       <button id="tacAdd" class="morebtn">Elave et</button>
+    </div>
+  </section>
+
+  <section id="journalView" hidden>
+    <h2>Treyd Jurnalı</h2>
+    <div id="tiltBox"></div>
+    <div class="card">
+      <h3>Statistika</h3>
+      <div id="jStats" class="muted">Hələ treyd yoxdur.</div>
+    </div>
+    <div class="card">
+      <h3>Yeni treyd</h3>
+      <div class="frow">
+        <label>Cutluk <input id="jSym" value="BTCUSDT"></label>
+        <label>Yön <select id="jSide"><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></label>
+        <label>Giriş <input id="jEntry" type="number" step="any"></label>
+        <label>Çıxış <input id="jExit" type="number" step="any"></label>
+        <label>Ölçü (coin) <input id="jSize" type="number" step="any" value="0.001"></label>
+      </div>
+      <div style="height:8px"></div>
+      <textarea id="jNote" placeholder="Səbəb: məs 3/5 BUY + FVG..."></textarea>
+      <button id="jAdd" class="morebtn">Əlavə et</button>
+    </div>
+    <div class="card">
+      <h3>Tarixçə</h3>
+      <div id="jList"></div>
     </div>
   </section>
 

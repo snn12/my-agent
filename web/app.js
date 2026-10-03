@@ -97,7 +97,7 @@ function render() {
 }
 
 async function openCoin(bybit) {
-  $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("coinView").hidden = false;
+  $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("coinView").hidden = false;
   const t = S.items.find(x => x.bybit === bybit);
   setCoinTitle(t ? t.symbol : bybit, S.tf);
   $("coinInfo").textContent = (t ? t.symbol : bybit) + " — Bybit linear (USDT) cutluyu. Dovriye: " +
@@ -135,7 +135,9 @@ async function openCoin(bybit) {
         `Giris: <b>${fmt(L.entry)}</b> (ATR ${L.atr})<br>` +
         `<span class="up">LONG</span> → SL <b class="down">${fmt(L.long.sl)}</b> · TP1 <b class="up">${fmt(L.long.tp1)}</b> · TP2 <b class="up">${fmt(L.long.tp2)}</b><br>` +
         `<span class="down">SHORT</span> → SL <b class="down">${fmt(L.short.sl)}</b> · TP1 <b class="up">${fmt(L.short.tp1)}</b> · TP2 <b class="up">${fmt(L.short.tp2)}</b><br>` +
-        `<span class="muted">Son 50 bar: max ${fmt(L.swing_high_50)} / min ${fmt(L.swing_low_50)}</span>`;
+        `<span class="muted">Son 50 bar: max ${fmt(L.swing_high_50)} / min ${fmt(L.swing_low_50)}</span>` +
+        (L.prev_month_high !== undefined
+          ? `<br><span class="muted">Evvelki ay: max ${fmt(L.prev_month_high)} / min ${fmt(L.prev_month_low)}</span>` : "");
       renderRisk(L);
     } else { $("levels").textContent = "hesablanmadi"; }
     if (s.session) {
@@ -184,6 +186,8 @@ const DEFAULT_TACTICS = [
   {name: "ENGULF", desc: "Engulfing + sweep: bullish engulf + low sweep = BUY (tersi SELL)"},
   {name: "TURTLE", desc: "Evvelki max/min sweep + geri baglanis = eksine giris (fade)"},
   {name: "RETEST", desc: "EMA zonasina 2+ toxunus: trend istiqametinde giris hazirligi"},
+  {name: "AMD", desc: "Range + kenar sweep + genis govde = trap istiqametinin eksine"},
+  {name: "POC", desc: "En cox volumlu seviye: VAH ustu BUY, VAL alti SELL"},
   {name: "OI", desc: "Qiymet + OI birlikde qalxirsa yeni longlar = BUY (tersi SELL)"},
 ];
 
@@ -203,13 +207,53 @@ function renderTactics() {
   };
 }
 
+function getTrades() { return JSON.parse(localStorage.getItem("trades") || "[]"); }
+function saveTrades(a) { localStorage.setItem("trades", JSON.stringify(a)); }
+
+function renderJournal() {
+  const arr = getTrades();
+  const closed = arr.filter(t => t.exit !== "" && t.exit !== null);
+  let w = 0, pnl = 0;
+  for (const t of closed) {
+    const p = (parseFloat(t.exit) - parseFloat(t.entry)) * parseFloat(t.size) * (t.side === "LONG" ? 1 : -1);
+    t._pnl = p; pnl += p;
+    if (p > 0) w++;
+  }
+  const wr = closed.length ? (w / closed.length * 100).toFixed(1) : "-";
+  $("jStats").innerHTML = closed.length
+    ? `Treyd: <b>${closed.length}</b> · Winrate: <b>${wr}%</b> · Net: <b class="${pnl >= 0 ? "up" : "down"}">${pnl.toFixed(2)} USDT</b>`
+    : "Hələ treyd yoxdur.";
+  // TILT: son 3 bagli zererdirse ve ya son 60 deqiqede 5+ treyd
+  const warns = [];
+  const last3 = closed.slice(-3);
+  if (last3.length === 3 && last3.every(t => t._pnl <= 0)) warns.push("⚠️ TILT WARNING: son 3 treyd zərərlidir — fasilə ver!");
+  const now = Date.now(), recent = arr.filter(t => now - t.ts < 3600000).length;
+  if (recent >= 5) warns.push(`⚠️ Overtrade: son 1 saatda ${recent} treyd — yavaşla!`);
+  $("tiltBox").innerHTML = warns.map(x => `<div class="card"><b class="down">${x}</b></div>`).join("");
+  $("jList").innerHTML = arr.length ? arr.slice().reverse().map((t, i) =>
+    `<p>• ${t.sym} ${t.side} ${t.entry}→${t.exit || "?"} <span class="${(t._pnl ?? 0) >= 0 ? "up" : "down"}">${t._pnl !== undefined ? t._pnl.toFixed(2) : ""}</span> ${t.note || ""} <button class="morebtn" data-del="${arr.length - 1 - i}">sil</button></p>`
+  ).join("") : `<p class="muted">Boşdur.</p>`;
+  document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+    const a = getTrades(); a.splice(+b.dataset.del, 1); saveTrades(a); renderJournal();
+  });
+  $("jAdd").onclick = () => {
+    const a = getTrades();
+    a.push({ sym: $("jSym").value.trim().toUpperCase() || "BTCUSDT", side: $("jSide").value,
+      entry: $("jEntry").value, exit: $("jExit").value, size: parseFloat($("jSize").value) || 0,
+      note: $("jNote").value.trim(), ts: Date.now() });
+    saveTrades(a); $("jEntry").value = ""; $("jExit").value = ""; $("jNote").value = "";
+    renderJournal();
+  };
+}
+
 function router() {
   S.route = location.hash || "#/";
   $("aboutView").hidden = true; $("coinView").hidden = true;
-  $("tacticsView").hidden = true; $("listView").hidden = false;
+  $("tacticsView").hidden = true; $("journalView").hidden = true; $("listView").hidden = false;
   if (S.route.startsWith("#/coin/")) openCoin(S.route.split("/")[2]);
   else if (S.route === "#/about") { $("listView").hidden = true; $("aboutView").hidden = false; }
   else if (S.route === "#/tactics") { $("listView").hidden = true; $("tacticsView").hidden = false; renderTactics(); }
+  else if (S.route === "#/journal") { $("listView").hidden = true; $("journalView").hidden = false; renderJournal(); }
   else render();
 }
 
@@ -277,7 +321,7 @@ window.addEventListener("hashchange", router);
 for (const id of ["fBuy", "fSell"]) {
   const el = $(id), cur = el.value;
   el.innerHTML = "";
-  for (let i = 0; i <= 10; i++) {
+  for (let i = 0; i <= 12; i++) {
     const o = document.createElement("option");
     o.value = String(i); o.textContent = String(i);
     el.appendChild(o);
