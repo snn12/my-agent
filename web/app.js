@@ -23,6 +23,7 @@ async function loadTickers() {
   }
   S.items = j.items;
   render();
+  checkAlerts();
   autoScan();
   // novbeti polling ucun cari qiymetler prev olur
   setTimeout(() => { for (const t of S.items) S.prev[t.bybit] = t.price; }, 1000);
@@ -97,9 +98,27 @@ function render() {
 }
 
 async function openCoin(bybit) {
-  $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("backtestView").hidden = true; $("coinView").hidden = false;
+  S._coin = bybit;
+  $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("backtestView").hidden = true; $("alertsView").hidden = true; $("coinView").hidden = false;
   const t = S.items.find(x => x.bybit === bybit);
   setCoinTitle(t ? t.symbol : bybit, S.tf);
+  renderCoinAlerts(bybit);
+  $("alAdd").onclick = () => {
+    if (!$("alPrice").value) return;
+    addAlert(bybit, t ? t.symbol : bybit, $("alCond").value, $("alPrice").value, $("alNote").value.trim());
+    $("alPrice").value = ""; $("alNote").value = "";
+    renderCoinAlerts(bybit);
+  };
+  $("alTP").onclick = () => {
+    if (!S.lastLevels) return;
+    addAlert(bybit, t ? t.symbol : bybit, "above", S.lastLevels.long.tp2, "TP2");
+    renderCoinAlerts(bybit);
+  };
+  $("alSL").onclick = () => {
+    if (!S.lastLevels) return;
+    addAlert(bybit, t ? t.symbol : bybit, "below", S.lastLevels.long.sl, "SL");
+    renderCoinAlerts(bybit);
+  };
   $("coinInfo").textContent = (t ? t.symbol : bybit) + " — Bybit linear (USDT) cutluyu. Dovriye: " +
     (t ? fmt(t.turnover24h) + " USDT" : "-");
   renderCtx(bybit);
@@ -139,6 +158,7 @@ async function openCoin(bybit) {
     $("coinSignal").appendChild(document.createElement("br")); $("coinSignal").appendChild(btn);
     if (s.levels) {
       const L = s.levels;
+      S.lastLevels = L;
       const f2 = (v) => (v === null || v === undefined) ? "-" : fmt(v);
       $("levels").innerHTML =
         `Giris: <b>${fmt(L.entry)}</b> (ATR ${L.atr})<br>` +
@@ -262,12 +282,84 @@ function renderJournal() {
   };
 }
 
+function getAlerts() { return JSON.parse(localStorage.getItem("alerts") || "[]"); }
+function saveAlerts(a) { localStorage.setItem("alerts", JSON.stringify(a)); updateAlBadge(); }
+function updateAlBadge() {
+  const n = getAlerts().filter(a => !a.fired).length;
+  $("alCount").textContent = n ? `(${n})` : "";
+}
+
+function addAlert(bybit, sym, cond, price, note) {
+  if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+  const a = getAlerts();
+  a.push({ id: Date.now(), bybit, sym, cond, price: parseFloat(price), note: note || "", fired: false, ts: Date.now() });
+  saveAlerts(a);
+}
+
+function fireAlert(a, price) {
+  a.fired = true;
+  const msg = `${a.sym}: ${fmt(price)} ${a.cond === "above" ? "yuxarı keçdi" : "aşağı düşdü"} (limit ${fmt(a.price)}) ${a.note}`;
+  if ("Notification" in window && Notification.permission === "granted") {
+    try { new Notification("my-agent", { body: msg }); } catch (e) {}
+  }
+  $("fStatus").textContent = "🔔 " + msg;
+}
+
+function checkAlerts() {
+  const a = getAlerts();
+  let changed = false;
+  for (const x of a) {
+    if (x.fired) continue;
+    const t = S.items.find(i => i.bybit === x.bybit);
+    if (!t) continue;
+    if ((x.cond === "above" && t.price >= x.price) || (x.cond === "below" && t.price <= x.price)) {
+      fireAlert(x, t.price);
+      changed = true;
+    }
+  }
+  if (changed) { saveAlerts(a); renderAlertsPage(); if (S._coin) renderCoinAlerts(S._coin); }
+}
+
+function alertRow(x) {
+  return `<p>• ${x.sym} ${x.cond === "above" ? "≥" : "≤"} <b>${fmt(x.price)}</b> ${x.note || ""} ` +
+    (x.fired ? `<span class="badge b-hold">TUTDU</span> <button class="morebtn" data-rearm="${x.id}">yenidən</button>`
+             : `<span class="badge b-long">İZLƏNİR</span>`) +
+    ` <button class="morebtn" data-aldel="${x.id}">sil</button></p>`;
+}
+
+function bindAlertBtns(root) {
+  root.querySelectorAll("[data-aldel]").forEach(b => b.onclick = () => {
+    saveAlerts(getAlerts().filter(x => x.id !== +b.dataset.aldel));
+    renderAlertsPage(); if (S._coin) renderCoinAlerts(S._coin);
+  });
+  root.querySelectorAll("[data-rearm]").forEach(b => b.onclick = () => {
+    const a = getAlerts();
+    const x = a.find(y => y.id === +b.dataset.rearm);
+    if (x) x.fired = false;
+    saveAlerts(a); renderAlertsPage(); if (S._coin) renderCoinAlerts(S._coin);
+  });
+}
+
+function renderAlertsPage() {
+  const a = getAlerts();
+  $("allAlerts").innerHTML = a.length ? a.slice().reverse().map(alertRow).join("") : `<p class="muted">Limit yoxdur.</p>`;
+  bindAlertBtns($("allAlerts"));
+}
+
+function renderCoinAlerts(bybit) {
+  const a = getAlerts().filter(x => x.bybit === bybit);
+  $("alList").innerHTML = a.length ? a.map(alertRow).join("") : `<p class="muted">Bu coin üçün limit yoxdur.</p>`;
+  bindAlertBtns($("alList"));
+}
+
 function router() {
   S.route = location.hash || "#/";
   $("aboutView").hidden = true; $("coinView").hidden = true;
   $("tacticsView").hidden = true; $("journalView").hidden = true;
-  $("backtestView").hidden = true; $("listView").hidden = false;
+  $("backtestView").hidden = true; $("alertsView").hidden = true; $("listView").hidden = false;
   if (S.route.startsWith("#/coin/")) openCoin(S.route.split("/")[2]);
+  else if (S.route === "#/about") { $("listView").hidden = true; $("aboutView").hidden = false; }
+  else if (S.route === "#/alerts") { $("listView").hidden = true; $("alertsView").hidden = false; renderAlertsPage(); }
   else if (S.route === "#/about") { $("listView").hidden = true; $("aboutView").hidden = false; }
   else if (S.route === "#/tactics") { $("listView").hidden = true; $("tacticsView").hidden = false; renderTactics(); }
   else if (S.route === "#/journal") { $("listView").hidden = true; $("journalView").hidden = false; renderJournal(); }
@@ -349,6 +441,7 @@ document.querySelectorAll("[data-tf]").forEach(b => b.onclick = () => {
   router(); autoScan();
 });
 window.addEventListener("hashchange", router);
+updateAlBadge();
 for (const id of ["fBuy", "fSell"]) {
   const el = $(id), cur = el.value;
   el.innerHTML = "";
