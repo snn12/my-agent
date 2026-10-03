@@ -114,7 +114,11 @@ async function openCoin(bybit) {
         `<span class="up">LONG</span> → SL <b class="down">${fmt(L.long.sl)}</b> · TP1 <b class="up">${fmt(L.long.tp1)}</b> · TP2 <b class="up">${fmt(L.long.tp2)}</b><br>` +
         `<span class="down">SHORT</span> → SL <b class="down">${fmt(L.short.sl)}</b> · TP1 <b class="up">${fmt(L.short.tp1)}</b> · TP2 <b class="up">${fmt(L.short.tp2)}</b><br>` +
         `<span class="muted">Son 50 bar: max ${fmt(L.swing_high_50)} / min ${fmt(L.swing_low_50)}</span>`;
+      renderRisk(L);
     } else { $("levels").textContent = "hesablanmadi"; }
+    if (s.session) {
+      $("coinChg").textContent += ` | Sessiya ${s.session.utc} UTC: ${s.session.in_overlap ? "aktiv (London/NY)" : "passiv"}`;
+    }
   } catch (e) { $("coinPrice").textContent = "xeta: " + e; }
 }
 
@@ -124,6 +128,22 @@ function setCoinTitle(symbol, tf, price, cls) {
   } else {
     $("coinTitle").innerHTML = `${symbol} / ${tf} — <span class="${cls || ""}">${fmt(price)}</span>`;
   }
+}
+
+function renderRisk(L) {
+  const draw = () => {
+    const bal = parseFloat($("rkBal").value) || 0;
+    const pct = parseFloat($("rkPct").value) || 0;
+    const risk = bal * pct / 100;
+    const dL = Math.abs(L.entry - L.long.sl), dS = Math.abs(L.entry - L.short.sl);
+    const sizeL = dL ? risk / dL : 0, sizeS = dS ? risk / dS : 0;
+    $("rkOut").innerHTML =
+      `Risk: <b>${fmt(risk)} USDT</b> (${pct}%)<br>` +
+      `LONG ölçü: <b>${sizeL.toFixed(5)}</b> coin (~${fmt(sizeL * L.entry)} USDT) · ` +
+      `SHORT ölçü: <b>${sizeS.toFixed(5)}</b> coin (~${fmt(sizeS * L.entry)} USDT)`;
+  };
+  $("rkBal").oninput = draw; $("rkPct").oninput = draw;
+  draw();
 }
 
 function renderCtx(sym) {
@@ -137,6 +157,11 @@ const DEFAULT_TACTICS = [
   {name: "TREND", desc: "Qiymet EMA20 ustundeyse BUY, altindadirsa SELL"},
   {name: "RSI", desc: "<30 BUY, >70 SELL, >55 BUY, <45 SELL, eks halda HOLD"},
   {name: "MACD", desc: "Histogram musbetse BUY, menfidirse SELL, kesisme guclu siqnal"},
+  {name: "P/D", desc: "Son 50 bar range: <40% discount = BUY zonasi, >60% premium = SELL zonasi"},
+  {name: "FVG", desc: "Son 10 barda mitigasiya olunmamis gap: bullish = BUY, bearish = SELL"},
+  {name: "ENGULF", desc: "Engulfing + sweep: bullish engulf + low sweep = BUY (tersi SELL)"},
+  {name: "RETEST", desc: "EMA zonasina 2+ toxunus: trend istiqametinde giris hazirligi"},
+  {name: "OI", desc: "Qiymet + OI birlikde qalxirsa yeni longlar = BUY (tersi SELL)"},
 ];
 
 function renderTactics() {
@@ -205,5 +230,15 @@ document.querySelectorAll("[data-tf]").forEach(b => b.onclick = () => {
   b.classList.add("on"); S.tf = b.dataset.tf; router();
 });
 window.addEventListener("hashchange", router);
+for (const id of ["fBuy", "fSell"]) {
+  const el = $(id), cur = el.value;
+  el.innerHTML = "";
+  for (let i = 0; i <= 9; i++) {
+    const o = document.createElement("option");
+    o.value = String(i); o.textContent = String(i);
+    el.appendChild(o);
+  }
+  el.value = cur;
+}
 loadTickers(); setInterval(loadTickers, 120000); // her 2 deq
 router();

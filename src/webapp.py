@@ -5,10 +5,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 import config
-from src.bybit import fetch_tickers, fetch_kline
+from src.bybit import fetch_tickers, fetch_kline, fetch_oi
 from src.indicators import add_indicators
 from src.strategy import analyze
-from src.tactics import tactics_breakdown
+from src.tactics import tactics_breakdown, extra_tactics
 
 app = FastAPI(title="my-agent trading")
 
@@ -37,9 +37,18 @@ def signal(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 200):
                         config.RSI_PERIOD, config.ATR_PERIOD)
     res = analyze(df, config.EMA_FAST, config.EMA_SLOW)
     res["tactics"] = tactics_breakdown(df, config.EMA_FAST, config.EMA_SLOW)
+    try:
+        oi = fetch_oi(sym, timeframe, 30)
+    except Exception:
+        oi = None
+    res["tactics"] += extra_tactics(df, config.EMA_FAST, config.EMA_SLOW, oi)
     res["symbol"] = sym
     res["display"] = sym[:-4] + "/USDT" if sym.endswith("USDT") else sym
     res["timeframe"] = timeframe
+    from datetime import datetime, timezone
+    now_utc = datetime.now(timezone.utc)
+    h = now_utc.hour + now_utc.minute / 60.0
+    res["session"] = {"in_overlap": 12.0 <= h < 17.0, "utc": now_utc.strftime("%H:%M")}
     # TP/SL seviyeleri: giris = son baglanis, ATR + son 50 bar min/max
     try:
         entry = float(df["close"].iloc[-1])

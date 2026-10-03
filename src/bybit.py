@@ -10,6 +10,13 @@ TF_TO_BYBIT = {
     "1D": "D",
 }
 
+TF_TO_OI = {
+    "15m": "15min",
+    "1h": "1h",
+    "4h": "4h",
+    "1D": "D",
+}
+
 
 def to_bybit(symbol: str) -> str:
     """BTC/USDT -> BTCUSDT"""
@@ -83,3 +90,18 @@ def fetch_kline(symbol: str, timeframe: str = "1h", limit: int = 200, category: 
     df["ts"] = df["ts"].astype(int)
     df["datetime"] = pd.to_datetime(df["ts"], unit="ms", utc=True)
     return df[["ts", "open", "high", "low", "close", "volume", "datetime"]]
+
+
+def fetch_oi(symbol: str, timeframe: str = "1h", limit: int = 30):
+    """Open Interest (kohne -> yeni). Derivativler ucun."""
+    url = f"{BASE}/v5/market/open-interest"
+    params = {"category": "linear", "symbol": to_bybit(symbol),
+              "intervalTime": TF_TO_OI.get(timeframe, "1h"),
+              "limit": min(limit, 200)}
+    r = requests.get(url, params=params, timeout=20)
+    r.raise_for_status()
+    data = r.json()
+    if data.get("retCode") != 0:
+        raise RuntimeError(f"Bybit OI xetasi: {data}")
+    rows = list(reversed(data["result"]["list"]))
+    return [float(x["openInterest"]) for x in rows]
