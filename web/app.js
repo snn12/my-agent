@@ -73,7 +73,7 @@ function render() {
 async function openCoin(bybit) {
   $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("coinView").hidden = false;
   const t = S.items.find(x => x.bybit === bybit);
-  $("coinTitle").textContent = (t ? t.symbol : bybit) + " / " + S.tf;
+  setCoinTitle(t ? t.symbol : bybit, S.tf);
   $("coinInfo").textContent = (t ? t.symbol : bybit) + " — Bybit linear (USDT) cutluyu. Dovriye: " +
     (t ? fmt(t.turnover24h) + " USDT" : "-");
   renderCtx(bybit);
@@ -83,6 +83,7 @@ async function openCoin(bybit) {
   try {
     const s = await (await fetch(`/api/signal?symbol=${bybit}&timeframe=${S.tf}`)).json();
     const cls = dirCls(bybit, s.price);
+    setCoinTitle(t ? t.symbol : bybit, S.tf, s.price, cls);
     $("coinPrice").textContent = fmt(s.price);
     $("coinPrice").className = cls;
     $("coinChg").textContent = `RSI ${s.rsi} | ATR ${s.atr} | stop ~${s.suggested_stop_dist}`;
@@ -111,6 +112,14 @@ async function openCoin(bybit) {
         `<span class="muted">Son 50 bar: max ${fmt(L.swing_high_50)} / min ${fmt(L.swing_low_50)}</span>`;
     } else { $("levels").textContent = "hesablanmadi"; }
   } catch (e) { $("coinPrice").textContent = "xeta: " + e; }
+}
+
+function setCoinTitle(symbol, tf, price, cls) {
+  if (price === undefined) {
+    $("coinTitle").textContent = symbol + " / " + tf;
+  } else {
+    $("coinTitle").innerHTML = `${symbol} / ${tf} — <span class="${cls || ""}">${fmt(price)}</span>`;
+  }
 }
 
 function renderCtx(sym) {
