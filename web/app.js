@@ -131,11 +131,14 @@ async function openCoin(bybit) {
     $("coinSignal").appendChild(document.createElement("br")); $("coinSignal").appendChild(btn);
     if (s.levels) {
       const L = s.levels;
+      const f2 = (v) => (v === null || v === undefined) ? "-" : fmt(v);
       $("levels").innerHTML =
         `Giris: <b>${fmt(L.entry)}</b> (ATR ${L.atr})<br>` +
-        `<span class="up">LONG</span> → SL <b class="down">${fmt(L.long.sl)}</b> · TP1 <b class="up">${fmt(L.long.tp1)}</b> · TP2 <b class="up">${fmt(L.long.tp2)}</b><br>` +
-        `<span class="down">SHORT</span> → SL <b class="down">${fmt(L.short.sl)}</b> · TP1 <b class="up">${fmt(L.short.tp1)}</b> · TP2 <b class="up">${fmt(L.short.tp2)}</b><br>` +
-        `<span class="muted">Son 50 bar: max ${fmt(L.swing_high_50)} / min ${fmt(L.swing_low_50)}</span>` +
+        `<span class="up">LONG</span> → SL <b class="down">${fmt(L.long.sl)}</b> · TP ATR <b class="up">${fmt(L.long.tp1)}/${fmt(L.long.tp2)}</b><br>` +
+        `&nbsp;&nbsp;TP swing <b class="up">${f2(L.long.tp_swing)}</b> · TP fib1.618 <b class="up">${f2(L.long.tp_fib1618)}</b> · TP 2R <b class="up">${f2(L.long.tp_2R)}</b><br>` +
+        `<span class="down">SHORT</span> → SL <b class="down">${fmt(L.short.sl)}</b> · TP ATR <b class="up">${fmt(L.short.tp1)}/${fmt(L.short.tp2)}</b><br>` +
+        `&nbsp;&nbsp;TP swing <b class="up">${f2(L.short.tp_swing)}</b> · TP fib1.618 <b class="up">${f2(L.short.tp_fib1618)}</b> · TP 2R <b class="up">${f2(L.short.tp_2R)}</b><br>` +
+        `<span class="muted">Swing: ${f2(L.swing_low)} / ${f2(L.swing_high)} · Son 50 bar: max ${fmt(L.swing_high_50)} / min ${fmt(L.swing_low_50)}</span>` +
         (L.prev_month_high !== undefined
           ? `<br><span class="muted">Evvelki ay: max ${fmt(L.prev_month_high)} / min ${fmt(L.prev_month_low)}</span>` : "");
       renderRisk(L);

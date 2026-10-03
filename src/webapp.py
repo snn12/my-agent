@@ -8,7 +8,7 @@ import config
 from src.bybit import fetch_tickers, fetch_kline, fetch_oi
 from src.indicators import add_indicators
 from src.strategy import analyze
-from src.tactics import tactics_breakdown, extra_tactics
+from src.tactics import tactics_breakdown, extra_tactics, precise_levels
 
 app = FastAPI(title="my-agent trading")
 
@@ -73,7 +73,14 @@ def signal(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 200):
                 "tp2": round(entry - 2.0 * atr_v, prec),
             },
         }
-        # Evvelki ayin max/min-i (hedef xetleri). Esas df-de tam ay yoxdursa 1h-dan 1000 bar cek.
+        try:
+            pl = precise_levels(df, entry, atr_v, prec)
+            lv["swing_high"] = pl["swing_high"]
+            lv["swing_low"] = pl["swing_low"]
+            lv["long"].update(pl["long"])
+            lv["short"].update(pl["short"])
+        except Exception:
+            pass
         try:
             d2 = df.copy()
             d2["ym"] = d2["datetime"].dt.strftime("%Y-%m")

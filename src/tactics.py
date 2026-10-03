@@ -184,6 +184,57 @@ def poc(df, lookback: int = 100, buckets: int = 50):
             "detail": f"Value area icinde {val:.2f}-{vah:.2f}"}
 
 
+def swing_points(df, k: int = 5, lookback: int = 100):
+    """Fraktal swingler: k bar sag-sol max/min. (index, qiymet) siyahilari."""
+    win = df.tail(lookback).reset_index(drop=True)
+    h = win["high"].to_numpy()
+    ll = win["low"].to_numpy()
+    n = len(win)
+    highs, lows = [], []
+    for i in range(k, n - k):
+        if h[i] == h[i - k:i + k + 1].max():
+            highs.append(float(h[i]))
+        if ll[i] == ll[i - k:i + k + 1].min():
+            lows.append(float(ll[i]))
+    return highs, lows
+
+
+def precise_levels(df, entry: float, atr_v: float, prec: int):
+    """Swing + Fib + 2R esasli deqiq TP/SL."""
+    buf = 0.25 * atr_v
+    highs, lows = swing_points(df)
+    above = sorted([x for x in highs if x > entry])
+    below = sorted([x for x in lows if x < entry], reverse=True)
+    sw_hi = above[0] if above else None
+    sw_lo = below[0] if below else None
+
+    long_sl = round((sw_lo - buf) if sw_lo else entry - 1.5 * atr_v, prec)
+    short_sl = round((sw_hi + buf) if sw_hi else entry + 1.5 * atr_v, prec)
+
+    # Fib genislenme: son ayagi tap (asagidan yuxari ve ya tersi)
+    fib_up, fib_dn = {}, {}
+    if sw_lo and sw_hi:
+        leg = sw_hi - sw_lo
+        fib_up = {"0.618": sw_hi + 0.618 * leg, "1.0": sw_hi + leg, "1.618": sw_hi + 1.618 * leg}
+        fib_dn = {"0.618": sw_lo - 0.618 * leg, "1.0": sw_lo - leg, "1.618": sw_lo - 1.618 * leg}
+
+    r_long = entry - long_sl
+    r_short = short_sl - entry
+    out = {
+        "swing_high": round(sw_hi, prec) if sw_hi else None,
+        "swing_low": round(sw_lo, prec) if sw_lo else None,
+        "long": {"sl": long_sl,
+                 "tp_swing": round(sw_hi, prec) if sw_hi else None,
+                 "tp_fib1618": round(fib_up.get("1.618"), prec) if fib_up else None,
+                 "tp_2R": round(entry + 2 * r_long, prec) if r_long > 0 else None},
+        "short": {"sl": short_sl,
+                  "tp_swing": round(sw_lo, prec) if sw_lo else None,
+                  "tp_fib1618": round(fib_dn.get("1.618"), prec) if fib_dn else None,
+                  "tp_2R": round(entry - 2 * r_short, prec) if r_short > 0 else None},
+    }
+    return out
+
+
 def oi_tactic(df, oi: list):
     """Qiymet + OI: yeni pul vs baglanis. 24 barliq pencere."""
     if len(oi) < 25 or len(df) < 25:
