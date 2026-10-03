@@ -137,11 +137,28 @@ def oi_tactic(df, oi: list):
     return {"name": "OI", "signal": "HOLD", "detail": "Longlar baglanir: hereket zeif ola biler"}
 
 
+def turtle(df, lookback: int = 20):
+    """Turtle Soup: evvelki max/min sweep + geri baglanis = fade."""
+    if len(df) < lookback + 2:
+        return {"name": "TURTLE", "signal": "HOLD", "detail": "Data azdir"}
+    prev_hi = float(df["high"].iloc[-lookback - 1:-1].max())
+    prev_lo = float(df["low"].iloc[-lookback - 1:-1].min())
+    hi, lo, cl = float(df["high"].iloc[-1]), float(df["low"].iloc[-1]), float(df["close"].iloc[-1])
+    if hi > prev_hi and cl < prev_hi:
+        return {"name": "TURTLE", "signal": "SELL",
+                "detail": f"High sweep {prev_hi:.2f} + geri donus"}
+    if lo < prev_lo and cl > prev_lo:
+        return {"name": "TURTLE", "signal": "BUY",
+                "detail": f"Low sweep {prev_lo:.2f} + geri donus"}
+    return {"name": "TURTLE", "signal": "HOLD", "detail": "Sweep yoxdur"}
+
+
 def extra_tactics(df, ema_fast: int = 20, ema_slow: int = 50, oi=None):
     out = [
         premium_discount(df),
         fvg(df),
         engulf(df),
+        turtle(df),
         retest(df, ema_fast, ema_slow),
     ]
     if oi:

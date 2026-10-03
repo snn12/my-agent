@@ -160,6 +160,7 @@ const DEFAULT_TACTICS = [
   {name: "P/D", desc: "Son 50 bar range: <40% discount = BUY zonasi, >60% premium = SELL zonasi"},
   {name: "FVG", desc: "Son 10 barda mitigasiya olunmamis gap: bullish = BUY, bearish = SELL"},
   {name: "ENGULF", desc: "Engulfing + sweep: bullish engulf + low sweep = BUY (tersi SELL)"},
+  {name: "TURTLE", desc: "Evvelki max/min sweep + geri baglanis = eksine giris (fade)"},
   {name: "RETEST", desc: "EMA zonasina 2+ toxunus: trend istiqametinde giris hazirligi"},
   {name: "OI", desc: "Qiymet + OI birlikde qalxirsa yeni longlar = BUY (tersi SELL)"},
 ];
@@ -233,7 +234,7 @@ window.addEventListener("hashchange", router);
 for (const id of ["fBuy", "fSell"]) {
   const el = $(id), cur = el.value;
   el.innerHTML = "";
-  for (let i = 0; i <= 9; i++) {
+  for (let i = 0; i <= 10; i++) {
     const o = document.createElement("option");
     o.value = String(i); o.textContent = String(i);
     el.appendChild(o);
