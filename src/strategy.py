@@ -1,6 +1,8 @@
 """Skorinq strategiyası: +bull, -bear. Sadə və izah edilə bilən."""
 import pandas as pd
 
+from src.tactics import px
+
 
 def analyze(df: pd.DataFrame, ema_fast: int = 20, ema_slow: int = 50) -> dict:
     last = df.iloc[-1]
@@ -13,17 +15,17 @@ def analyze(df: pd.DataFrame, ema_fast: int = 20, ema_slow: int = 50) -> dict:
     es = float(last[f"ema{ema_slow}"])
     if ef > es:
         score += 1
-        reasons.append(f"EMA{ema_fast} ({ef:.2f}) > EMA{ema_slow} ({es:.2f}) - trend yuxari")
+        reasons.append(f"EMA{ema_fast} ({px(ef)}) > EMA{ema_slow} ({px(es)}) - trend yuxari")
     elif ef < es:
         score -= 1
-        reasons.append(f"EMA{ema_fast} ({ef:.2f}) < EMA{ema_slow} ({es:.2f}) - trend asagi")
+        reasons.append(f"EMA{ema_fast} ({px(ef)}) < EMA{ema_slow} ({px(es)}) - trend asagi")
 
     if price > ef:
         score += 1
-        reasons.append(f"Qiymet ({price:.2f}) EMA{ema_fast} ustunde")
+        reasons.append(f"Qiymet ({px(price)}) EMA{ema_fast} ustunde")
     else:
         score -= 1
-        reasons.append(f"Qiymet ({price:.2f}) EMA{ema_fast} altinda")
+        reasons.append(f"Qiymet ({px(price)}) EMA{ema_fast} altinda")
 
     rsi_v = float(last["rsi"])
     if rsi_v < 30:

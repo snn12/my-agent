@@ -1,4 +1,23 @@
 """Her taktika ayrica BUY/SELL/HOLD deyir. Saytda qisa adla gorsenir."""
+import math
+
+
+def px(x, sig: int = 4):
+    """Qiymet format: boyukde 2, kicikde anlamli reqem."""
+    if x is None:
+        return "-"
+    try:
+        ax = abs(float(x))
+    except Exception:
+        return str(x)
+    if ax == 0:
+        return "0"
+    if ax >= 100:
+        return format(x, ".2f")
+    if ax >= 1:
+        return format(x, ".4f")
+    d = max(0, sig - int(math.floor(math.log10(ax))) - 1)
+    return format(x, "." + str(min(d, 8)) + "f")
 
 
 def tactics_breakdown(df, ema_fast: int = 20, ema_slow: int = 50):
@@ -16,12 +35,12 @@ def tactics_breakdown(df, ema_fast: int = 20, ema_slow: int = 50):
     tactics.append({
         "name": "EMA",
         "signal": "BUY" if ef > es else ("SELL" if ef < es else "HOLD"),
-        "detail": f"EMA{ema_fast} {ef:.2f} vs EMA{ema_slow} {es:.2f}",
+        "detail": f"EMA{ema_fast} {px(ef)} vs EMA{ema_slow} {px(es)}",
     })
     tactics.append({
         "name": "TREND",
         "signal": "BUY" if price > ef else "SELL",
-        "detail": f"Qiymet {price:.2f} vs EMA{ema_fast} {ef:.2f}",
+        "detail": f"Qiymet {px(price)} vs EMA{ema_fast} {px(ef)}",
     })
 
     if rsi_v < 30:
@@ -58,10 +77,10 @@ def premium_discount(df, lookback: int = 50):
     pos = (price - lo) / (hi - lo) if hi > lo else 0.5
     if pos < 0.4:
         return {"name": "P/D", "signal": "BUY",
-                "detail": f"Discount zona ({pos * 100:.0f}%): {lo:.2f}-{hi:.2f}"}
+                "detail": f"Discount zona ({pos * 100:.0f}%): {px(lo)}-{px(hi)}"}
     if pos > 0.6:
         return {"name": "P/D", "signal": "SELL",
-                "detail": f"Premium zona ({pos * 100:.0f}%): {lo:.2f}-{hi:.2f}"}
+                "detail": f"Premium zona ({pos * 100:.0f}%): {px(lo)}-{px(hi)}"}
     return {"name": "P/D", "signal": "HOLD",
             "detail": f"Ekvilibrium ({pos * 100:.0f}%)"}
 
@@ -78,12 +97,12 @@ def fvg(df, lookback: int = 10):
             mitigated = bool((df["low"].iloc[i + 1:] < hi_prev).any())
             if not mitigated:
                 return {"name": "FVG", "signal": "BUY",
-                        "detail": f"Bullish FVG {hi_prev:.2f}-{lo_i:.2f} aktivdir"}
+                        "detail": f"Bullish FVG {px(hi_prev)}-{px(lo_i)} aktivdir"}
         elif hi_i < lo_prev:  # bearish FVG
             mitigated = bool((df["high"].iloc[i + 1:] > lo_prev).any())
             if not mitigated:
                 return {"name": "FVG", "signal": "SELL",
-                        "detail": f"Bearish FVG {hi_i:.2f}-{lo_prev:.2f} aktivdir"}
+                        "detail": f"Bearish FVG {px(hi_i)}-{px(lo_prev)} aktivdir"}
     return {"name": "FVG", "signal": "HOLD", "detail": "Aktiv FVG yoxdur"}
 
 
@@ -136,11 +155,11 @@ def amd(df, lookback: int = 30):
     body = abs(c - o)
     if lo < rng_lo and c > rng_lo and c > o and body > 1.5 * atr_v:
         return {"name": "AMD", "signal": "BUY",
-                "detail": f"Low sweep {rng_lo:.2f} + genis govde (bear trap)"}
+                "detail": f"Low sweep {px(rng_lo)} + genis govde (bear trap)"}
     if hi > rng_hi and c < rng_hi and o > c and body > 1.5 * atr_v:
         return {"name": "AMD", "signal": "SELL",
-                "detail": f"High sweep {rng_hi:.2f} + genis govde (bull trap)"}
-    return {"name": "AMD", "signal": "HOLD", "detail": f"Range {rng_lo:.2f}-{rng_hi:.2f}"}
+                "detail": f"High sweep {px(rng_hi)} + genis govde (bull trap)"}
+    return {"name": "AMD", "signal": "HOLD", "detail": f"Range {px(rng_lo)}-{px(rng_hi)}"}
 
 
 def poc(df, lookback: int = 100, buckets: int = 50):
@@ -176,12 +195,12 @@ def poc(df, lookback: int = 100, buckets: int = 50):
     price = float(df["close"].iloc[-1])
     if price > vah:
         return {"name": "POC", "signal": "BUY",
-                "detail": f"VAH {vah:.2f} ustunde qebul (POC {poc_price:.2f})"}
+                "detail": f"VAH {px(vah)} ustunde qebul (POC {px(poc_price)})"}
     if price < val:
         return {"name": "POC", "signal": "SELL",
-                "detail": f"VAL {val:.2f} altinda redd (POC {poc_price:.2f})"}
+                "detail": f"VAL {px(val)} altinda redd (POC {px(poc_price)})"}
     return {"name": "POC", "signal": "HOLD",
-            "detail": f"Value area icinde {val:.2f}-{vah:.2f}"}
+            "detail": f"Value area icinde {px(val)}-{px(vah)}"}
 
 
 def swing_points(df, k: int = 5, lookback: int = 100):
@@ -238,7 +257,7 @@ def precise_levels(df, entry: float, atr_v: float, prec: int):
 def oi_tactic(df, oi: list):
     """Qiymet + OI: yeni pul vs baglanis. 24 barliq pencere."""
     if len(oi) < 25 or len(df) < 25:
-        return {"name": "OI", "signal": "HOLD", "detail": "OI datası azdir"}
+        return {"name": "OI", "signal": "HOLD", "detail": "OI datasi azdir"}
     po = (oi[-1] - oi[-25]) / oi[-25] * 100 if oi[-25] else 0.0
     c0, c1 = float(df["close"].iloc[-1]), float(df["close"].iloc[-25])
     pp = (c0 - c1) / c1 * 100 if c1 else 0.0
@@ -260,10 +279,10 @@ def turtle(df, lookback: int = 20):
     hi, lo, cl = float(df["high"].iloc[-1]), float(df["low"].iloc[-1]), float(df["close"].iloc[-1])
     if hi > prev_hi and cl < prev_hi:
         return {"name": "TURTLE", "signal": "SELL",
-                "detail": f"High sweep {prev_hi:.2f} + geri donus"}
+                "detail": f"High sweep {px(prev_hi)} + geri donus"}
     if lo < prev_lo and cl > prev_lo:
         return {"name": "TURTLE", "signal": "BUY",
-                "detail": f"Low sweep {prev_lo:.2f} + geri donus"}
+                "detail": f"Low sweep {px(prev_lo)} + geri donus"}
     return {"name": "TURTLE", "signal": "HOLD", "detail": "Sweep yoxdur"}
 
 
@@ -312,10 +331,10 @@ def boll(df):
     if float(w.iloc[-1]) <= float(w.min()):
         return {"name": "BOLL", "signal": "HOLD", "detail": "Squeeze: partlayis gozlenilir"}
     if pctb > 1.0:
-        return {"name": "BOLL", "signal": "SELL", "detail": f"%B {pctb:.2f}: hedden artiq yuxari"}
+        return {"name": "BOLL", "signal": "SELL", "detail": f"%B {px(pctb)}: hedden artiq yuxari"}
     if pctb < 0.0:
-        return {"name": "BOLL", "signal": "BUY", "detail": f"%B {pctb:.2f}: hedden artiq asagi"}
-    return {"name": "BOLL", "signal": "HOLD", "detail": f"%B {pctb:.2f} kanalda"}
+        return {"name": "BOLL", "signal": "BUY", "detail": f"%B {px(pctb)}: hedden artiq asagi"}
+    return {"name": "BOLL", "signal": "HOLD", "detail": f"%B {px(pctb)} kanalda"}
 
 
 def vwap_t(df):
@@ -325,14 +344,14 @@ def vwap_t(df):
         return {"name": "VWAP", "signal": "HOLD", "detail": "Data azdir"}
     price = float(df["close"].iloc[-1])
     if price > float(v):
-        return {"name": "VWAP", "signal": "BUY", "detail": f"Qiymet VWAP {float(v):.2f} ustunde"}
-    return {"name": "VWAP", "signal": "SELL", "detail": f"Qiymet VWAP {float(v):.2f} altinda"}
+        return {"name": "VWAP", "signal": "BUY", "detail": f"Qiymet VWAP {px(float(v))} ustunde"}
+    return {"name": "VWAP", "signal": "SELL", "detail": f"Qiymet VWAP {px(float(v))} altinda"}
 
 
 def fund_t(rates):
     """Funding ekstremleri (contrarian): cox musbet = SELL, cox menfi = BUY."""
     if not rates:
-        return {"name": "FUND", "signal": "HOLD", "detail": "Funding datası yoxdur"}
+        return {"name": "FUND", "signal": "HOLD", "detail": "Funding datasi yoxdur"}
     avg = sum(rates[-3:]) / min(3, len(rates))
     if avg > 0.0005:
         return {"name": "FUND", "signal": "SELL",
