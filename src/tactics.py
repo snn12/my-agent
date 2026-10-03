@@ -267,7 +267,83 @@ def turtle(df, lookback: int = 20):
     return {"name": "TURTLE", "signal": "HOLD", "detail": "Sweep yoxdur"}
 
 
-def extra_tactics(df, ema_fast: int = 20, ema_slow: int = 50, oi=None):
+def rsi_div(df, lookback: int = 30, k: int = 3):
+    """RSI divergensiya: qiymet HH + RSI LH = SELL (tersi BUY)."""
+    win = df.tail(lookback).reset_index(drop=True)
+    n = len(win)
+    if n < 2 * k + 3:
+        return {"name": "RSI-D", "signal": "HOLD", "detail": "Data azdir"}
+    highs, lows = [], []
+    for i in range(k, n - k):
+        if float(win["high"].iloc[i]) == float(win["high"].iloc[i - k:i + k + 1].max()):
+            highs.append(i)
+        if float(win["low"].iloc[i]) == float(win["low"].iloc[i - k:i + k + 1].min()):
+            lows.append(i)
+    if len(highs) >= 2:
+        a, b = highs[-2], highs[-1]
+        if float(win["high"].iloc[b]) > float(win["high"].iloc[a]) and \
+           float(win["rsi"].iloc[b]) < float(win["rsi"].iloc[a]):
+            return {"name": "RSI-D", "signal": "SELL", "detail": "Bearish divergensiya (HH + RSI LH)"}
+    if len(lows) >= 2:
+        a, b = lows[-2], lows[-1]
+        if float(win["low"].iloc[b]) < float(win["low"].iloc[a]) and \
+           float(win["rsi"].iloc[b]) > float(win["rsi"].iloc[a]):
+            return {"name": "RSI-D", "signal": "BUY", "detail": "Bullish divergensiya (LL + RSI HL)"}
+    return {"name": "RSI-D", "signal": "HOLD", "detail": "Divergensiya yoxdur"}
+
+
+def ema_cross(df, ema_fast: int = 20, ema_slow: int = 50, lookback: int = 5):
+    """Teze kesisme (son N bar): yuxari = BUY, asagi = SELL."""
+    d = df[f"ema{ema_fast}"] - df[f"ema{ema_slow}"]
+    for i in range(len(df) - 1, max(len(df) - 1 - lookback, 0), -1):
+        if d.iloc[i - 1] <= 0 < d.iloc[i]:
+            return {"name": "X-EMA", "signal": "BUY", "detail": "Teze bullish kesisme"}
+        if d.iloc[i - 1] >= 0 > d.iloc[i]:
+            return {"name": "X-EMA", "signal": "SELL", "detail": "Teze bearish kesisme"}
+    return {"name": "X-EMA", "signal": "HOLD", "detail": "Teze kesisme yoxdur"}
+
+
+def boll(df):
+    """Bollinger: kenardan kenara + squeeze."""
+    if len(df) < 25 or df["bb_width"].iloc[-1] != df["bb_width"].iloc[-1]:
+        return {"name": "BOLL", "signal": "HOLD", "detail": "Data azdir"}
+    pctb = float(df["bb_pctb"].iloc[-1])
+    w = df["bb_width"].tail(20)
+    if float(w.iloc[-1]) <= float(w.min()):
+        return {"name": "BOLL", "signal": "HOLD", "detail": "Squeeze: partlayis gozlenilir"}
+    if pctb > 1.0:
+        return {"name": "BOLL", "signal": "SELL", "detail": f"%B {pctb:.2f}: hedden artiq yuxari"}
+    if pctb < 0.0:
+        return {"name": "BOLL", "signal": "BUY", "detail": f"%B {pctb:.2f}: hedden artiq asagi"}
+    return {"name": "BOLL", "signal": "HOLD", "detail": f"%B {pctb:.2f} kanalda"}
+
+
+def vwap_t(df):
+    """Gunluk VWAP: ustu BUY, alti SELL."""
+    v = df["vwap"].iloc[-1]
+    if v != v or v is None:
+        return {"name": "VWAP", "signal": "HOLD", "detail": "Data azdir"}
+    price = float(df["close"].iloc[-1])
+    if price > float(v):
+        return {"name": "VWAP", "signal": "BUY", "detail": f"Qiymet VWAP {float(v):.2f} ustunde"}
+    return {"name": "VWAP", "signal": "SELL", "detail": f"Qiymet VWAP {float(v):.2f} altinda"}
+
+
+def fund_t(rates):
+    """Funding ekstremleri (contrarian): cox musbet = SELL, cox menfi = BUY."""
+    if not rates:
+        return {"name": "FUND", "signal": "HOLD", "detail": "Funding datası yoxdur"}
+    avg = sum(rates[-3:]) / min(3, len(rates))
+    if avg > 0.0005:
+        return {"name": "FUND", "signal": "SELL",
+                "detail": f"Funding +{avg * 100:.3f}%: longlar sixdir"}
+    if avg < -0.0005:
+        return {"name": "FUND", "signal": "BUY",
+                "detail": f"Funding {avg * 100:.3f}%: shortlar sixdir"}
+    return {"name": "FUND", "signal": "HOLD", "detail": f"Funding neytral ({avg * 100:.4f}%)"}
+
+
+def extra_tactics(df, ema_fast: int = 20, ema_slow: int = 50, oi=None, funding=None):
     out = [
         premium_discount(df),
         fvg(df),
@@ -275,6 +351,10 @@ def extra_tactics(df, ema_fast: int = 20, ema_slow: int = 50, oi=None):
         turtle(df),
         amd(df),
         poc(df),
+        rsi_div(df),
+        ema_cross(df, ema_fast, ema_slow),
+        boll(df),
+        vwap_t(df),
         retest(df, ema_fast, ema_slow),
     ]
     if oi:
@@ -282,4 +362,8 @@ def extra_tactics(df, ema_fast: int = 20, ema_slow: int = 50, oi=None):
             out.append(oi_tactic(df, oi))
         except Exception:
             pass
+    try:
+        out.append(fund_t(funding))
+    except Exception:
+        pass
     return out

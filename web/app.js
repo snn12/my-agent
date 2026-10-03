@@ -192,6 +192,11 @@ const DEFAULT_TACTICS = [
   {name: "AMD", desc: "Range + kenar sweep + genis govde = trap istiqametinin eksine"},
   {name: "POC", desc: "En cox volumlu seviye: VAH ustu BUY, VAL alti SELL"},
   {name: "OI", desc: "Qiymet + OI birlikde qalxirsa yeni longlar = BUY (tersi SELL)"},
+  {name: "RSI-D", desc: "Divergensiya: qiymet HH + RSI LH = SELL (tersi BUY)"},
+  {name: "X-EMA", desc: "Son 5 barda teze EMA kesisme: yuxari BUY, asagi SELL"},
+  {name: "BOLL", desc: "Bollinger: %B>1 SELL, %B<0 BUY, squeeze = gozle"},
+  {name: "VWAP", desc: "Gunluk VWAP: qiymet ustunde BUY, altinda SELL"},
+  {name: "FUND", desc: "Funding ekstremi (contrarian): + cox = SELL, - cox = BUY"},
 ];
 
 function renderTactics() {
@@ -324,7 +329,7 @@ window.addEventListener("hashchange", router);
 for (const id of ["fBuy", "fSell"]) {
   const el = $(id), cur = el.value;
   el.innerHTML = "";
-  for (let i = 0; i <= 12; i++) {
+  for (let i = 0; i <= 17; i++) {
     const o = document.createElement("option");
     o.value = String(i); o.textContent = String(i);
     el.appendChild(o);

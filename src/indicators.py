@@ -35,6 +35,24 @@ def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     return tr.ewm(alpha=1 / period, adjust=False).mean()
 
 
+def bollinger(close: pd.Series, period: int = 20, mult: float = 2.0):
+    sma = close.rolling(period).mean()
+    std = close.rolling(period).std()
+    upper = sma + mult * std
+    lower = sma - mult * std
+    pctb = (close - lower) / (upper - lower).replace(0, float("nan"))
+    width = (upper - lower) / sma.replace(0, float("nan"))
+    return upper, lower, pctb.fillna(0.5), width
+
+
+def vwap_daily(df: pd.DataFrame) -> pd.Series:
+    tp = (df["high"] + df["low"] + df["close"]) / 3.0
+    day = df["datetime"].dt.strftime("%Y-%m-%d")
+    pv = (tp * df["volume"]).groupby(day).cumsum()
+    vv = df["volume"].groupby(day).cumsum().replace(0, float("nan"))
+    return (pv / vv).ffill()
+
+
 def add_indicators(df: pd.DataFrame, ema_fast: int = 20, ema_slow: int = 50,
                    rsi_period: int = 14, atr_period: int = 14) -> pd.DataFrame:
     out = df.copy()
@@ -45,4 +63,7 @@ def add_indicators(df: pd.DataFrame, ema_fast: int = 20, ema_slow: int = 50,
     out["macd"], out["macd_signal"], out["macd_hist"] = m, s, h
     out["atr"] = atr(out, atr_period)
     out["vol_sma20"] = out["volume"].rolling(20).mean()
+    bb_u, bb_l, pctb, width = bollinger(out["close"])
+    out["bb_upper"], out["bb_lower"], out["bb_pctb"], out["bb_width"] = bb_u, bb_l, pctb, width
+    out["vwap"] = vwap_daily(out)
     return out

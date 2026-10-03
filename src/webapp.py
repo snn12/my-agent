@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 import config
-from src.bybit import fetch_tickers, fetch_kline, fetch_oi
+from src.bybit import fetch_tickers, fetch_kline, fetch_oi, fetch_funding
 from src.indicators import add_indicators
 from src.strategy import analyze
 from src.tactics import tactics_breakdown, extra_tactics, precise_levels
@@ -41,7 +41,11 @@ def signal(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 200):
         oi = fetch_oi(sym, timeframe, 30)
     except Exception:
         oi = None
-    res["tactics"] += extra_tactics(df, config.EMA_FAST, config.EMA_SLOW, oi)
+    try:
+        funding = fetch_funding(sym, 10)
+    except Exception:
+        funding = None
+    res["tactics"] += extra_tactics(df, config.EMA_FAST, config.EMA_SLOW, oi, funding)
     res["symbol"] = sym
     res["display"] = sym[:-4] + "/USDT" if sym.endswith("USDT") else sym
     res["timeframe"] = timeframe

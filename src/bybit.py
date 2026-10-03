@@ -105,3 +105,16 @@ def fetch_oi(symbol: str, timeframe: str = "1h", limit: int = 30):
         raise RuntimeError(f"Bybit OI xetasi: {data}")
     rows = list(reversed(data["result"]["list"]))
     return [float(x["openInterest"]) for x in rows]
+
+
+def fetch_funding(symbol: str, limit: int = 10):
+    """Son funding rateler (kohne -> yeni). Musbet = longlar odeyir."""
+    url = f"{BASE}/v5/market/funding/history"
+    params = {"category": "linear", "symbol": to_bybit(symbol), "limit": min(limit, 200)}
+    r = requests.get(url, params=params, timeout=20)
+    r.raise_for_status()
+    data = r.json()
+    if data.get("retCode") != 0:
+        raise RuntimeError(f"Bybit funding xetasi: {data}")
+    rows = list(reversed(data["result"]["list"]))
+    return [float(x["fundingRate"]) for x in rows]
