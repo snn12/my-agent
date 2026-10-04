@@ -9,6 +9,7 @@ from src.bybit import fetch_tickers, fetch_kline, fetch_oi, fetch_funding
 from src.indicators import add_indicators
 from src.strategy import analyze
 from src.tactics import tactics_breakdown, extra_tactics, precise_levels
+from src.news import get_news
 
 app = FastAPI(title="my-agent trading")
 
@@ -231,6 +232,12 @@ def run_backtest(sym, timeframe, limit, sl_mult=1.5, tp_mult=3.0, max_hold=50):
         })
     out.sort(key=lambda x: x["netR"], reverse=True)
     return out, n
+
+
+@app.get("/api/news")
+def news(limit: int = 40):
+    items = get_news(min(limit, 60))
+    return {"count": len(items), "items": items}
 
 
 @app.get("/")

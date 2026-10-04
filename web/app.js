@@ -102,7 +102,7 @@ function render() {
 
 async function openCoin(bybit) {
   S._coin = bybit;
-  $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("backtestView").hidden = true; $("alertsView").hidden = true; $("cycleView").hidden = true; $("coinView").hidden = false;
+  $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("backtestView").hidden = true; $("alertsView").hidden = true; $("cycleView").hidden = true; $("newsView").hidden = true; $("coinView").hidden = false;
   const t = S.items.find(x => x.bybit === bybit);
   setCoinTitle(t ? t.symbol : bybit, S.tf);
   renderCoinAlerts(bybit);
@@ -384,11 +384,31 @@ function renderCycle() {
     `<p class="muted">Nəzəriyyə keçmiş 4 nöqtəyə uyğunlaşdırılıb — özünü doğruldan kehanet riski var: hamı 5 oktyabra baxırsa, dib ya tez olur, ya da heç olmur. Tarixə yox, taktik + SL-ə güvən.</p>`;
 }
 
+function renderNews(filter) {
+  $("nStatus").textContent = "Yuklenir...";
+  fetch("/api/news?limit=40").then(r => r.json()).then(j => {
+    let items = j.items;
+    if (filter) {
+      const f = filter.trim().toUpperCase().replace("/", "");
+      items = items.filter(x => x.coins.some(c => c.includes(f)) || x.title.toUpperCase().includes(f));
+    }
+    $("nStatus").textContent = `${items.length} xeber (10 deq keşlə saxlanılır)`;
+    $("nList").innerHTML = items.map(x => {
+      const tags = x.coins.map(c => {
+        const d = c.endsWith("USDT") ? c.slice(0, -4) + "/USDT" : c;
+        return `<a href="#/coin/${c}"><span class="badge b-long">${d}</span></a>`;
+      }).join(" ") + (x.kind === "market" ? ` <span class="badge b-hold">MARKET</span>` : "");
+      return `<div class="card"><a href="${x.link}" target="_blank" style="color:#fff">${x.title}</a>` +
+        `<div class="meta">${x.source} · ${x.time}</div><div style="margin-top:6px">${tags || '<span class="muted">ümumi</span>'}</div></div>`;
+    }).join("") || `<p class="muted">Xeber tapilmadi.</p>`;
+  }).catch(e => { $("nStatus").textContent = "Xeta: " + e; });
+}
+
 function router() {
   S.route = location.hash || "#/";
   $("aboutView").hidden = true; $("coinView").hidden = true;
   $("tacticsView").hidden = true; $("journalView").hidden = true;
-  $("backtestView").hidden = true; $("alertsView").hidden = true; $("cycleView").hidden = true; $("listView").hidden = false;
+  $("backtestView").hidden = true; $("alertsView").hidden = true; $("cycleView").hidden = true; $("newsView").hidden = true; $("listView").hidden = false;
   if (S.route.startsWith("#/coin/")) openCoin(S.route.split("/")[2]);
   else if (S.route === "#/about") { $("listView").hidden = true; $("aboutView").hidden = false; }
   else if (S.route === "#/alerts") { $("listView").hidden = true; $("alertsView").hidden = false; renderAlertsPage(); }
@@ -396,8 +416,11 @@ function router() {
   else if (S.route === "#/journal") { $("listView").hidden = true; $("journalView").hidden = false; renderJournal(); }
   else if (S.route === "#/backtest") { $("listView").hidden = true; $("backtestView").hidden = false; }
   else if (S.route === "#/cycle") { $("listView").hidden = true; $("cycleView").hidden = false; renderCycle(); }
+  else if (S.route === "#/news") { $("listView").hidden = true; $("newsView").hidden = false; renderNews(""); }
   else render();
 }
+
+$("nGo").onclick = () => renderNews($("nCoin").value);
 
 $("bGo").onclick = async () => {
   $("bGo").disabled = true;

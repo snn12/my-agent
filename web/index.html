@@ -26,6 +26,7 @@
   <a href="#/alerts" data-nav>Xəbərdarlıqlar <span id="alCount"></span></a>
   <a href="#/backtest" data-nav>Backtest</a>
   <a href="#/cycle" data-nav>Tsikl</a>
+  <a href="#/news" data-nav>Xəbərlər</a>
   <a href="#/about" data-nav>Haqqında</a>
   <h3>Timeframe</h3>
   <div class="tfrow">
@@ -201,6 +202,19 @@
     <h2>Tsikl saatı (1064 / 364)</h2>
     <p class="muted">/biz/ nəzəriyyəsi: ATL→ATH 1064 gün, ATH→ATL 364 gün. Bu proqnoz deyil, təqvimdir.</p>
     <div class="card"><div id="cycleOut">hesablanir...</div></div>
+  </section>
+
+  <section id="newsView" hidden>
+    <h2>Kripto xəbərləri</h2>
+    <p class="muted">CoinDesk / Cointelegraph / Decrypt. Etiket: hansı coinə aiddir (başlıqdan avtomatik, təxmini).</p>
+    <div class="card">
+      <div class="frow">
+        <label>Coin filtri <input id="nCoin" placeholder="BTC"></label>
+        <button id="nGo" class="morebtn">Gətir</button>
+      </div>
+      <div id="nStatus" class="muted"></div>
+    </div>
+    <div id="nList"></div>
   </section>
 
   <section id="aboutView" hidden>
