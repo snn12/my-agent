@@ -1,6 +1,6 @@
 """FastAPI web server: statik sayt + /api (Bybit + siqnal)."""
 import os
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -33,6 +33,8 @@ def tickers(limit: int = Query(default=1000, le=1000), q: str = ""):
 def signal(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 200):
     sym = symbol.replace("/", "").upper()
     df = fetch_kline(sym, timeframe, limit)
+    if df is None or len(df) < 60:
+        raise HTTPException(status_code=404, detail=f"{sym} üçün kifayət data yoxdur (söhbət siyahıda olmaya bilər)")
     df = add_indicators(df, config.EMA_FAST, config.EMA_SLOW,
                         config.RSI_PERIOD, config.ATR_PERIOD)
     res = analyze(df, config.EMA_FAST, config.EMA_SLOW)
