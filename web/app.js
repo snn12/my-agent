@@ -102,7 +102,7 @@ function render() {
 
 async function openCoin(bybit) {
   S._coin = bybit;
-  $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("backtestView").hidden = true; $("alertsView").hidden = true; $("coinView").hidden = false;
+  $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("backtestView").hidden = true; $("alertsView").hidden = true; $("cycleView").hidden = true; $("coinView").hidden = false;
   const t = S.items.find(x => x.bybit === bybit);
   setCoinTitle(t ? t.symbol : bybit, S.tf);
   renderCoinAlerts(bybit);
@@ -372,17 +372,30 @@ function renderCoinAlerts(bybit) {
   bindAlertBtns($("alList"));
 }
 
+function renderCycle() {
+  const ATH = new Date("2025-10-06T00:00:00Z");
+  const now = new Date();
+  const el = Math.floor((now - ATH) / 86400000);
+  const target = 364, left = target - el;
+  const pct = Math.min(100, Math.max(0, el / target * 100)).toFixed(1);
+  $("cycleOut").innerHTML =
+    `ATH: <b>6 okt 2025</b> · keçib: <b>${el} gün</b> · ATL pəncərəsi: <b>~5 okt 2026</b> (${left >= 0 ? left + " gün qalıb" : -left + " gün keçib"})<br>` +
+    `<div style="background:#0a0a0a;border:1px solid #3a3a3a;border-radius:8px;height:14px;margin-top:8px"><div style="height:100%;width:${pct}%;background:#e5e5e5;border-radius:8px"></div></div>` +
+    `<p class="muted">Nəzəriyyə keçmiş 4 nöqtəyə uyğunlaşdırılıb — özünü doğruldan kehanet riski var: hamı 5 oktyabra baxırsa, dib ya tez olur, ya da heç olmur. Tarixə yox, taktik + SL-ə güvən.</p>`;
+}
+
 function router() {
   S.route = location.hash || "#/";
   $("aboutView").hidden = true; $("coinView").hidden = true;
   $("tacticsView").hidden = true; $("journalView").hidden = true;
-  $("backtestView").hidden = true; $("alertsView").hidden = true; $("listView").hidden = false;
+  $("backtestView").hidden = true; $("alertsView").hidden = true; $("cycleView").hidden = true; $("listView").hidden = false;
   if (S.route.startsWith("#/coin/")) openCoin(S.route.split("/")[2]);
   else if (S.route === "#/about") { $("listView").hidden = true; $("aboutView").hidden = false; }
   else if (S.route === "#/alerts") { $("listView").hidden = true; $("alertsView").hidden = false; renderAlertsPage(); }
   else if (S.route === "#/tactics") { $("listView").hidden = true; $("tacticsView").hidden = false; renderTactics(); }
   else if (S.route === "#/journal") { $("listView").hidden = true; $("journalView").hidden = false; renderJournal(); }
   else if (S.route === "#/backtest") { $("listView").hidden = true; $("backtestView").hidden = false; }
+  else if (S.route === "#/cycle") { $("listView").hidden = true; $("cycleView").hidden = false; renderCycle(); }
   else render();
 }
 
