@@ -1,4 +1,6 @@
 """Bybit public API — key lazim deyil."""
+import time
+
 import requests
 
 BASE = "https://api.bybit.com"
@@ -23,6 +25,21 @@ def to_bybit(symbol: str) -> str:
     return symbol.replace("/", "").upper()
 
 
+def _get(url, params, tries: int = 4):
+    """10006 rate-limitde gozle + tekrar."""
+    last = None
+    for i in range(tries):
+        r = requests.get(url, params=params, timeout=20)
+        r.raise_for_status()
+        data = r.json()
+        if data.get("retCode") == 10006:
+            last = data
+            time.sleep(2 * (i + 1))
+            continue
+        return data
+    raise RuntimeError(f"Bybit limit xetasi: {last}")
+
+
 def to_display(bybit_symbol: str) -> str:
     s = bybit_symbol.upper()
     if s.endswith("USDT"):
@@ -31,7 +48,7 @@ def to_display(bybit_symbol: str) -> str:
 
 
 def fetch_tickers(category: str = "linear", limit: int = 1000):
-    """Butun USDT lineer tickerler. Siralama: turnover科学与."""
+    """Butun USDT lineer tickerler. Dovriyyeye gore siralanir."""
     url = f"{BASE}/v5/market/tickers"
     out = []
     cursor = ""
@@ -39,9 +56,7 @@ def fetch_tickers(category: str = "linear", limit: int = 1000):
         params = {"category": category, "limit": 1000}
         if cursor:
             params["cursor"] = cursor
-        r = requests.get(url, params=params, timeout=20)
-        r.raise_for_status()
-        data = r.json()
+        data = _get(url, params)
         if data.get("retCode") != 0:
             raise RuntimeError(f"Bybit xetasi: {data}")
         page = data["result"]["list"]
@@ -77,9 +92,7 @@ def fetch_kline(symbol: str, timeframe: str = "1h", limit: int = 200, category: 
     url = f"{BASE}/v5/market/kline"
     params = {"category": category, "symbol": to_bybit(symbol),
               "interval": interval, "limit": min(limit, 1000)}
-    r = requests.get(url, params=params, timeout=20)
-    r.raise_for_status()
-    data = r.json()
+    data = _get(url, params)
     if data.get("retCode") != 0:
         raise RuntimeError(f"Bybit kline xetasi: {data}")
     rows = data["result"]["list"]
@@ -98,9 +111,7 @@ def fetch_oi(symbol: str, timeframe: str = "1h", limit: int = 30):
     params = {"category": "linear", "symbol": to_bybit(symbol),
               "intervalTime": TF_TO_OI.get(timeframe, "1h"),
               "limit": min(limit, 200)}
-    r = requests.get(url, params=params, timeout=20)
-    r.raise_for_status()
-    data = r.json()
+    data = _get(url, params)
     if data.get("retCode") != 0:
         raise RuntimeError(f"Bybit OI xetasi: {data}")
     rows = list(reversed(data["result"]["list"]))
@@ -111,9 +122,7 @@ def fetch_funding(symbol: str, limit: int = 10):
     """Son funding rateler (kohne -> yeni). Musbet = longlar odeyir."""
     url = f"{BASE}/v5/market/funding/history"
     params = {"category": "linear", "symbol": to_bybit(symbol), "limit": min(limit, 200)}
-    r = requests.get(url, params=params, timeout=20)
-    r.raise_for_status()
-    data = r.json()
+    data = _get(url, params)
     if data.get("retCode") != 0:
         raise RuntimeError(f"Bybit funding xetasi: {data}")
     rows = list(reversed(data["result"]["list"]))
