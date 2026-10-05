@@ -127,13 +127,16 @@ async function openCoin(bybit) {
   S.chartTimer = setInterval(livePrice, 30000);
   fetch(`/api/combo?symbol=${bybit}&timeframe=${S.tf}`).then(r => r.json()).then(c => {
     const vc = c.verdict === "LONG" ? "b-long" : (c.verdict === "SHORT" ? "b-short" : "b-neytral");
-    const rows = c.used.length ? c.used.map(u => {
+    const half = Math.ceil(c.used.length / 2);
+    const mkTbl = (arr) => `<table class="tbl"><tr><th>Taktika</th><th>Çəki</th><th>İndi</th></tr>` + arr.map(u => {
       const bc = u.signal === "BUY" ? "b-buy" : (u.signal === "SELL" ? "b-sell" : "b-hold");
       return `<tr><td><b>${u.name}</b></td><td>${u.weight}R</td><td><span class="badge ${bc}">${u.signal}</span></td></tr>`;
-    }).join("") : `<tr><td colspan="3" class="muted">Keçmişdə qazandıran taktika yoxdur — hamısı HOLD.</td></tr>`;
+    }).join("") + `</table>`;
+    const tbls = c.used.length
+      ? `<div class="cols2">${mkTbl(c.used.slice(0, half))}${mkTbl(c.used.slice(half))}</div>`
+      : `<p class="muted">Keçmişdə qazandıran taktika yoxdur — hamısı HOLD.</p>`;
     $("combo").innerHTML =
-      `<p><span class="badge ${vc}">${c.verdict}</span> BUY ${c.buyScore} vs SELL ${c.sellScore}${c.cached ? ` <span class="muted">keşdən</span>` : ""}</p>` +
-      `<table class="tbl"><tr><th>Taktika</th><th>Çəki</th><th>İndi</th></tr>${rows}</table>`;
+      `<p><span class="badge ${vc}">${c.verdict}</span> BUY ${c.buyScore} vs SELL ${c.sellScore}${c.cached ? ` <span class="muted">keşdən</span>` : ""}</p>` + tbls;
   }).catch(e => { $("combo").textContent = "Xeta: " + e; });
   try {
     const s = await (await fetch(`/api/signal?symbol=${bybit}&timeframe=${S.tf}`)).json();
