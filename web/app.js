@@ -128,15 +128,24 @@ async function openCoin(bybit) {
   fetch(`/api/combo?symbol=${bybit}&timeframe=${S.tf}`).then(r => r.json()).then(c => {
     const vc = c.verdict === "LONG" ? "b-long" : (c.verdict === "SHORT" ? "b-short" : "b-neytral");
     const half = Math.ceil(c.used.length / 2);
-    const mkTbl = (arr) => `<table class="tbl"><tr><th>Taktika</th><th>Çəki</th><th>İndi</th></tr>` + arr.map(u => {
+    const cell = (u) => {
+      if (!u) return `<td></td><td></td><td></td>`;
       const bc = u.signal === "BUY" ? "b-buy" : (u.signal === "SELL" ? "b-sell" : "b-hold");
-      return `<tr><td><b>${u.name}</b></td><td>${u.weight}R</td><td><span class="badge ${bc}">${u.signal}</span></td></tr>`;
-    }).join("") + `</table>`;
-    const tbls = c.used.length
-      ? `<div class="cols2">${mkTbl(c.used.slice(0, half))}${mkTbl(c.used.slice(half))}</div>`
-      : `<p class="muted">Keçmişdə qazandıran taktika yoxdur — hamısı HOLD.</p>`;
+      return `<td><b>${u.name}</b></td><td>${u.weight}R</td><td><span class="badge ${bc}">${u.signal}</span></td>`;
+    };
+    const A = c.used.slice(0, half), B = c.used.slice(half);
+    let tbl = "";
+    if (c.used.length) {
+      tbl = `<table class="tbl"><tr><th>Taktika</th><th>Çəki</th><th>İndi</th><th>Taktika</th><th>Çəki</th><th>İndi</th></tr>`;
+      for (let i = 0; i < Math.max(A.length, B.length); i++) {
+        tbl += `<tr>${cell(A[i])}${cell(B[i])}</tr>`;
+      }
+      tbl += `</table>`;
+    } else {
+      tbl = `<p class="muted">Keçmişdə qazandıran taktika yoxdur — hamısı HOLD.</p>`;
+    }
     $("combo").innerHTML =
-      `<p><span class="badge ${vc}">${c.verdict}</span> BUY ${c.buyScore} vs SELL ${c.sellScore}${c.cached ? ` <span class="muted">keşdən</span>` : ""}</p>` + tbls;
+      `<p><span class="badge ${vc}">${c.verdict}</span> BUY ${c.buyScore} vs SELL ${c.sellScore}${c.cached ? ` <span class="muted">keşdən</span>` : ""}</p>` + tbl;
   }).catch(e => { $("combo").textContent = "Xeta: " + e; });
   try {
     const s = await (await fetch(`/api/signal?symbol=${bybit}&timeframe=${S.tf}`)).json();
