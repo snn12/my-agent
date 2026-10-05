@@ -106,23 +106,6 @@ async function openCoin(bybit) {
   $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("backtestView").hidden = true; $("alertsView").hidden = true; $("cycleView").hidden = true; $("newsView").hidden = true; $("coinView").hidden = false;
   const t = S.items.find(x => x.bybit === bybit);
   setCoinTitle(t ? t.symbol : bybit, S.tf);
-  renderCoinAlerts(bybit);
-  $("alAdd").onclick = () => {
-    if (!$("alPrice").value) return;
-    addAlert(bybit, t ? t.symbol : bybit, $("alCond").value, $("alPrice").value, $("alNote").value.trim());
-    $("alPrice").value = ""; $("alNote").value = "";
-    renderCoinAlerts(bybit);
-  };
-  $("alTP").onclick = () => {
-    if (!S.lastLevels) return;
-    addAlert(bybit, t ? t.symbol : bybit, "above", S.lastLevels.long.tp2, "TP2");
-    renderCoinAlerts(bybit);
-  };
-  $("alSL").onclick = () => {
-    if (!S.lastLevels) return;
-    addAlert(bybit, t ? t.symbol : bybit, "below", S.lastLevels.long.sl, "SL");
-    renderCoinAlerts(bybit);
-  };
   $("coinInfo").textContent = (t ? t.symbol : bybit) + " — Bybit linear (USDT) cutluyu. Dovriye: " +
     (t ? fmt(t.turnover24h) + " USDT" : "-");
   renderCtx(bybit);
@@ -130,24 +113,21 @@ async function openCoin(bybit) {
   $("tactics").innerHTML = ""; $("coinReasons").hidden = true;
   $("levels").textContent = "yuklenir...";
   $("combo").textContent = "yuklenir (ilk defe 1-2 deqiqe)...";
-  fetch(`/api/klines?symbol=${bybit}&timeframe=${S.tf}&limit=200`).then(r => r.json()).then(k => {
-    if (k.rows) drawChart(k.rows);
-  }).catch(() => {});
-  const liveDraw = () => {
+  const livePrice = () => {
     if (S._coin !== bybit || S.route !== "#/coin/" + bybit) return;
-    fetch(`/api/klines?symbol=${bybit}&timeframe=${S.tf}&limit=200`).then(r => r.json()).then(k => {
-      if (!k.rows) return;
-      drawChart(k.rows);
-      const lp = k.rows[k.rows.length - 1].c;
+    fetch(`/api/tickers?limit=1000`).then(r => r.json()).then(j => {
+      const it = j.items.find(x => x.bybit === bybit);
+      if (!it) return;
       const t = S.items.find(x => x.bybit === bybit);
-      const prev = t ? t.price : lp;
-      if (t) t.price = lp;
-      setCoinTitle(t ? t.symbol : bybit, S.tf, lp, lp > prev ? "up" : (lp < prev ? "down" : ""));
-      $("coinPrice").textContent = fmt(lp);
-      $("coinPrice").className = lp > prev ? "up" : (lp < prev ? "down" : "");
+      const prev = t ? t.price : it.price;
+      if (t) t.price = it.price;
+      const sym = t ? t.symbol : bybit;
+      setCoinTitle(sym, S.tf, it.price, it.price > prev ? "up" : (it.price < prev ? "down" : ""));
+      $("coinPrice").textContent = fmt(it.price);
+      $("coinPrice").className = it.price > prev ? "up" : (it.price < prev ? "down" : "");
     }).catch(() => {});
   };
-  S.chartTimer = setInterval(liveDraw, 30000);
+  S.chartTimer = setInterval(livePrice, 30000);
   fetch(`/api/combo?symbol=${bybit}&timeframe=${S.tf}`).then(r => r.json()).then(c => {
     const vc = c.verdict === "LONG" ? "b-long" : (c.verdict === "SHORT" ? "b-short" : "b-neytral");
     $("combo").innerHTML = `<span class="badge ${vc}">${c.verdict}</span> BUY ${c.buyScore} vs SELL ${c.sellScore}<br>` +
@@ -197,51 +177,6 @@ async function openCoin(bybit) {
       $("coinChg").textContent += ` | Sessiya ${s.session.utc} UTC: ${s.session.in_overlap ? "aktiv (London/NY)" : "passiv"}`;
     }
   } catch (e) { $("coinPrice").textContent = "xeta: " + e; }
-}
-
-function drawChart(rows) {
-  const cv = $("chart"), ctx = cv.getContext("2d");
-  const W = cv.width, H = cv.height, VH = 50;
-  const data = rows.slice(-120);
-  let hi = -1e18, lo = 1e18, vm = 0;
-  for (const r of data) {
-    hi = Math.max(hi, r.h, r.ema50 ?? -1e18, r.bbu ?? -1e18);
-    lo = Math.min(lo, r.l, r.ema50 ?? 1e18, r.bbl ?? 1e18);
-    vm = Math.max(vm, r.v);
-  }
-  const pad = (hi - lo) * 0.05 || 1;
-  hi += pad; lo -= pad;
-  const X = (i) => 8 + i * ((W - 16) / data.length);
-  const Y = (p) => 8 + (1 - (p - lo) / (hi - lo)) * (H - VH - 16);
-  ctx.clearRect(0, 0, W, H);
-  const bw = Math.max(2, (W - 16) / data.length * 0.6);
-  data.forEach((r, i) => {
-    const up = r.c >= r.o;
-    ctx.fillStyle = up ? "#22c55e" : "#ef4444";
-    ctx.fillRect(X(i) - bw / 2, Y(Math.max(r.o, r.c)), bw, Math.max(1, Y(Math.min(r.o, r.c)) - Y(Math.max(r.o, r.c))));
-    ctx.fillRect(X(i) - 0.5, Y(r.h), 1, Y(r.l) - Y(r.h));
-    const vh = r.v / (vm || 1) * (VH - 6);
-    ctx.fillStyle = up ? "#14532d" : "#7f1d1d";
-    ctx.fillRect(X(i) - bw / 2, H - 4 - vh, bw, vh);
-  });
-  const line = (key, color, dash, width) => {
-    ctx.strokeStyle = color; ctx.lineWidth = width || 1.2;
-    ctx.setLineDash(dash || []);
-    ctx.beginPath();
-    let started = false;
-    data.forEach((r, i) => {
-      if (r[key] === null || r[key] === undefined) return;
-      const x = X(i), y = Y(r[key]);
-      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
-    });
-    ctx.stroke(); ctx.setLineDash([]);
-  };
-  line("bbu", "#525252", [4, 4]); line("bbl", "#525252", [4, 4]);
-  line("ema50", "#737373"); line("ema20", "#ffffff", [], 1.6);
-  const lp = data[data.length - 1].c;
-  ctx.strokeStyle = lp >= data[data.length - 1].o ? "#22c55e" : "#ef4444";
-  ctx.setLineDash([6, 4]); ctx.beginPath();
-  ctx.moveTo(0, Y(lp)); ctx.lineTo(W, Y(lp)); ctx.stroke(); ctx.setLineDash([]);
 }
 
 function setCoinTitle(symbol, tf, price, cls) {
@@ -431,10 +366,21 @@ function renderAlertsPage() {
 }
 
 function renderCoinAlerts(bybit) {
+  if (!$("alList")) return;
   const a = getAlerts().filter(x => x.bybit === bybit);
   $("alList").innerHTML = a.length ? a.map(alertRow).join("") : `<p class="muted">Bu coin üçün limit yoxdur.</p>`;
   bindAlertBtns($("alList"));
 }
+
+$("alAdd").onclick = () => {
+  const sym = ($("alSym").value || "").trim().toUpperCase().replace("/", "");
+  if (!sym || !$("alPrice").value) return;
+  const bybit = sym.endsWith("USDT") ? sym : sym + "USDT";
+  const t = S.items.find(x => x.bybit === bybit);
+  addAlert(bybit, t ? t.symbol : bybit, $("alCond").value, $("alPrice").value, $("alNote").value.trim());
+  $("alPrice").value = ""; $("alNote").value = "";
+  renderAlertsPage();
+};
 
 function renderCycle() {
   const ATH = new Date("2025-10-06T00:00:00Z");

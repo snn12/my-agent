@@ -98,11 +98,6 @@
       <div id="tactics" class="tactics"></div>
     </div>
     <div class="card">
-      <h3>Qrafik + indikatorlar</h3>
-      <canvas id="chart" width="900" height="320" style="width:100%;background:#0a0a0a;border:1px solid #2e2e2e;border-radius:10px"></canvas>
-      <div class="meta">Ağ: EMA20 · Boz: EMA50 · Qırıq: Bollinger</div>
-    </div>
-    <div class="card">
       <h3>TP / SL (birbasa seviyeler)</h3>
       <div id="levels">yuklenir...</div>
       <p class="muted">LONG: giris = hazirki qiymet, SL = giris - 1.5xATR, TP1 = giris + 1xATR, TP2 = giris + 2xATR. SHORT tersine. Son 50 bar max/min de gosterilir.</p>
@@ -115,22 +110,6 @@
         </label>
       </div>
       <div id="rkOut" class="muted"></div>
-    </div>
-    <div class="card">
-      <h3>Qiymət limiti (entry xəbərdarlığı)</h3>
-      <div class="frow">
-        <label>Şərt
-          <select id="alCond"><option value="above">Yuxarı keçsə (BUY)</option><option value="below">Aşağı düşsə (SELL)</option></select>
-        </label>
-        <label>Qiymət <input id="alPrice" type="number" step="any"></label>
-        <label>Qeyd <input id="alNote" placeholder="məs TP2"></label>
-        <button id="alAdd" class="morebtn">İzlə</button>
-      </div>
-      <div class="frow" style="margin-top:6px">
-        <button id="alTP" class="morebtn">TP2-ni izlə</button>
-        <button id="alSL" class="morebtn">SL-i izlə</button>
-      </div>
-      <div id="alList"></div>
     </div>
     <div class="card">
       <h3>Coin haqqında</h3>
@@ -200,6 +179,18 @@
   <section id="alertsView" hidden>
     <h2>Qiymət xəbərdarlıqları</h2>
     <p class="muted">Sayt açıq olduğu müddətdə hər 2 dəqiqədən bir yoxlanılır. Şərt tutanda brauzer bildirişi gəlir.</p>
+    <div class="card">
+      <h3>Yeni limit</h3>
+      <div class="frow">
+        <label>Cutluk <input id="alSym" value="BTCUSDT"></label>
+        <label>Şərt
+          <select id="alCond"><option value="above">Yuxarı keçsə (BUY)</option><option value="below">Aşağı düşsə (SELL)</option></select>
+        </label>
+        <label>Qiymət <input id="alPrice" type="number" step="any"></label>
+        <label>Qeyd <input id="alNote" placeholder="məs TP2"></label>
+        <button id="alAdd" class="morebtn">İzlə</button>
+      </div>
+    </div>
     <div class="card"><div id="allAlerts"></div></div>
   </section>
 
