@@ -171,7 +171,6 @@ async function openCoin(bybit) {
         `<span class="muted">Swing: ${f2(L.swing_low)} / ${f2(L.swing_high)} · Son 50 bar: max ${fmt(L.swing_high_50)} / min ${fmt(L.swing_low_50)}</span>` +
         (L.prev_month_high !== undefined
           ? `<br><span class="muted">Evvelki ay: max ${fmt(L.prev_month_high)} / min ${fmt(L.prev_month_low)}</span>` : "");
-      renderRisk(L);
     } else { $("levels").textContent = "hesablanmadi"; }
     if (s.session) {
       $("coinChg").textContent += ` | Sessiya ${s.session.utc} UTC: ${s.session.in_overlap ? "aktiv (London/NY)" : "passiv"}`;
@@ -185,22 +184,6 @@ function setCoinTitle(symbol, tf, price, cls) {
   } else {
     $("coinTitle").innerHTML = `${symbol} / ${tf} — <span class="${cls || ""}">${fmt(price)}</span>`;
   }
-}
-
-function renderRisk(L) {
-  const draw = () => {
-    const bal = parseFloat($("rkBal").value) || 0;
-    const pct = parseFloat($("rkPct").value) || 0;
-    const risk = bal * pct / 100;
-    const dL = Math.abs(L.entry - L.long.sl), dS = Math.abs(L.entry - L.short.sl);
-    const sizeL = dL ? risk / dL : 0, sizeS = dS ? risk / dS : 0;
-    $("rkOut").innerHTML =
-      `Risk: <b>${fmt(risk)} USDT</b> (${pct}%)<br>` +
-      `LONG ölçü: <b>${sizeL.toFixed(5)}</b> coin (~${fmt(sizeL * L.entry)} USDT) · ` +
-      `SHORT ölçü: <b>${sizeS.toFixed(5)}</b> coin (~${fmt(sizeS * L.entry)} USDT)`;
-  };
-  $("rkBal").oninput = draw; $("rkPct").oninput = draw;
-  draw();
 }
 
 const DEFAULT_TACTICS = [
