@@ -129,6 +129,9 @@ async function openCoin(bybit) {
   $("tactics").innerHTML = ""; $("coinReasons").hidden = true;
   $("levels").textContent = "yuklenir...";
   $("combo").textContent = "yuklenir (ilk defe 1-2 deqiqe)...";
+  fetch(`/api/klines?symbol=${bybit}&timeframe=${S.tf}&limit=200`).then(r => r.json()).then(k => {
+    if (k.rows) drawChart(k.rows);
+  }).catch(() => {});
   fetch(`/api/combo?symbol=${bybit}&timeframe=${S.tf}`).then(r => r.json()).then(c => {
     const vc = c.verdict === "LONG" ? "b-long" : (c.verdict === "SHORT" ? "b-short" : "b-neytral");
     $("combo").innerHTML = `<span class="badge ${vc}">${c.verdict}</span> BUY ${c.buyScore} vs SELL ${c.sellScore}<br>` +
@@ -178,6 +181,51 @@ async function openCoin(bybit) {
       $("coinChg").textContent += ` | Sessiya ${s.session.utc} UTC: ${s.session.in_overlap ? "aktiv (London/NY)" : "passiv"}`;
     }
   } catch (e) { $("coinPrice").textContent = "xeta: " + e; }
+}
+
+function drawChart(rows) {
+  const cv = $("chart"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, VH = 50;
+  const data = rows.slice(-120);
+  let hi = -1e18, lo = 1e18, vm = 0;
+  for (const r of data) {
+    hi = Math.max(hi, r.h, r.ema50 ?? -1e18, r.bbu ?? -1e18);
+    lo = Math.min(lo, r.l, r.ema50 ?? 1e18, r.bbl ?? 1e18);
+    vm = Math.max(vm, r.v);
+  }
+  const pad = (hi - lo) * 0.05 || 1;
+  hi += pad; lo -= pad;
+  const X = (i) => 8 + i * ((W - 16) / data.length);
+  const Y = (p) => 8 + (1 - (p - lo) / (hi - lo)) * (H - VH - 16);
+  ctx.clearRect(0, 0, W, H);
+  const bw = Math.max(2, (W - 16) / data.length * 0.6);
+  data.forEach((r, i) => {
+    const up = r.c >= r.o;
+    ctx.fillStyle = up ? "#22c55e" : "#ef4444";
+    ctx.fillRect(X(i) - bw / 2, Y(Math.max(r.o, r.c)), bw, Math.max(1, Y(Math.min(r.o, r.c)) - Y(Math.max(r.o, r.c))));
+    ctx.fillRect(X(i) - 0.5, Y(r.h), 1, Y(r.l) - Y(r.h));
+    const vh = r.v / (vm || 1) * (VH - 6);
+    ctx.fillStyle = up ? "#14532d" : "#7f1d1d";
+    ctx.fillRect(X(i) - bw / 2, H - 4 - vh, bw, vh);
+  });
+  const line = (key, color, dash, width) => {
+    ctx.strokeStyle = color; ctx.lineWidth = width || 1.2;
+    ctx.setLineDash(dash || []);
+    ctx.beginPath();
+    let started = false;
+    data.forEach((r, i) => {
+      if (r[key] === null || r[key] === undefined) return;
+      const x = X(i), y = Y(r[key]);
+      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+  };
+  line("bbu", "#525252", [4, 4]); line("bbl", "#525252", [4, 4]);
+  line("ema50", "#737373"); line("vwap", "#a3a3a3", [2, 3]); line("ema20", "#ffffff", [], 1.6);
+  const lp = data[data.length - 1].c;
+  ctx.strokeStyle = lp >= data[data.length - 1].o ? "#22c55e" : "#ef4444";
+  ctx.setLineDash([6, 4]); ctx.beginPath();
+  ctx.moveTo(0, Y(lp)); ctx.lineTo(W, Y(lp)); ctx.stroke(); ctx.setLineDash([]);
 }
 
 function setCoinTitle(symbol, tf, price, cls) {

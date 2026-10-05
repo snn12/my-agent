@@ -234,6 +234,32 @@ def run_backtest(sym, timeframe, limit, sl_mult=1.5, tp_mult=3.0, max_hold=50):
     return out, n
 
 
+@app.get("/api/klines")
+def klines(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 200):
+    """Qrafik ucun: OHLC + EMA/BB/VWAP. NaN -> null."""
+    import math
+    sym = symbol.replace("/", "").upper()
+    df = fetch_kline(sym, timeframe, min(limit, 500))
+    if df is None or len(df) < 30:
+        raise HTTPException(status_code=404, detail=f"{sym} üçün data yoxdur")
+    df = add_indicators(df, config.EMA_FAST, config.EMA_SLOW,
+                        config.RSI_PERIOD, config.ATR_PERIOD)
+    rows = []
+    for _, r in df.iterrows():
+        def clean(v):
+            try:
+                f = float(v)
+                return f if f == f else None
+            except Exception:
+                return None
+        rows.append({"t": int(r["ts"]), "o": float(r["open"]), "h": float(r["high"]),
+                     "l": float(r["low"]), "c": float(r["close"]), "v": float(r["volume"]),
+                     "ema20": clean(r.get("ema20")), "ema50": clean(r.get("ema50")),
+                     "bbu": clean(r.get("bb_upper")), "bbl": clean(r.get("bb_lower")),
+                     "vwap": clean(r.get("vwap"))})
+    return {"symbol": sym, "timeframe": timeframe, "rows": rows}
+
+
 @app.get("/api/news")
 def news(limit: int = 40):
     items = get_news(min(limit, 60))
