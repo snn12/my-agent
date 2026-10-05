@@ -102,6 +102,7 @@ function render() {
 
 async function openCoin(bybit) {
   S._coin = bybit;
+  if (S.chartTimer) { clearInterval(S.chartTimer); S.chartTimer = null; }
   $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("backtestView").hidden = true; $("alertsView").hidden = true; $("cycleView").hidden = true; $("newsView").hidden = true; $("coinView").hidden = false;
   const t = S.items.find(x => x.bybit === bybit);
   setCoinTitle(t ? t.symbol : bybit, S.tf);
@@ -132,6 +133,21 @@ async function openCoin(bybit) {
   fetch(`/api/klines?symbol=${bybit}&timeframe=${S.tf}&limit=200`).then(r => r.json()).then(k => {
     if (k.rows) drawChart(k.rows);
   }).catch(() => {});
+  const liveDraw = () => {
+    if (S._coin !== bybit || S.route !== "#/coin/" + bybit) return;
+    fetch(`/api/klines?symbol=${bybit}&timeframe=${S.tf}&limit=200`).then(r => r.json()).then(k => {
+      if (!k.rows) return;
+      drawChart(k.rows);
+      const lp = k.rows[k.rows.length - 1].c;
+      const t = S.items.find(x => x.bybit === bybit);
+      const prev = t ? t.price : lp;
+      if (t) t.price = lp;
+      setCoinTitle(t ? t.symbol : bybit, S.tf, lp, lp > prev ? "up" : (lp < prev ? "down" : ""));
+      $("coinPrice").textContent = fmt(lp);
+      $("coinPrice").className = lp > prev ? "up" : (lp < prev ? "down" : "");
+    }).catch(() => {});
+  };
+  S.chartTimer = setInterval(liveDraw, 30000);
   fetch(`/api/combo?symbol=${bybit}&timeframe=${S.tf}`).then(r => r.json()).then(c => {
     const vc = c.verdict === "LONG" ? "b-long" : (c.verdict === "SHORT" ? "b-short" : "b-neytral");
     $("combo").innerHTML = `<span class="badge ${vc}">${c.verdict}</span> BUY ${c.buyScore} vs SELL ${c.sellScore}<br>` +
@@ -453,6 +469,7 @@ function renderNews(filter) {
 }
 
 function router() {
+  if (S.chartTimer) { clearInterval(S.chartTimer); S.chartTimer = null; }
   S.route = location.hash || "#/";
   $("aboutView").hidden = true; $("coinView").hidden = true;
   $("tacticsView").hidden = true; $("journalView").hidden = true;
