@@ -237,7 +237,7 @@ function drawChart(rows) {
     ctx.stroke(); ctx.setLineDash([]);
   };
   line("bbu", "#525252", [4, 4]); line("bbl", "#525252", [4, 4]);
-  line("ema50", "#737373"); line("vwap", "#a3a3a3", [2, 3]); line("ema20", "#ffffff", [], 1.6);
+  line("ema50", "#737373"); line("ema20", "#ffffff", [], 1.6);
   const lp = data[data.length - 1].c;
   ctx.strokeStyle = lp >= data[data.length - 1].o ? "#22c55e" : "#ef4444";
   ctx.setLineDash([6, 4]); ctx.beginPath();
