@@ -106,9 +106,6 @@ async function openCoin(bybit) {
   $("listView").hidden = true; $("aboutView").hidden = true; $("tacticsView").hidden = true; $("journalView").hidden = true; $("backtestView").hidden = true; $("alertsView").hidden = true; $("cycleView").hidden = true; $("newsView").hidden = true; $("coinView").hidden = false;
   const t = S.items.find(x => x.bybit === bybit);
   setCoinTitle(t ? t.symbol : bybit, S.tf);
-  $("coinInfo").textContent = (t ? t.symbol : bybit) + " — Bybit linear (USDT) cutluyu. Dovriye: " +
-    (t ? fmt(t.turnover24h) + " USDT" : "-");
-  renderCtx(bybit);
   $("coinPrice").textContent = "yuklenir..."; $("coinSignal").textContent = "";
   $("tactics").innerHTML = ""; $("coinReasons").hidden = true;
   $("levels").textContent = "yuklenir...";
@@ -201,12 +198,6 @@ function renderRisk(L) {
   };
   $("rkBal").oninput = draw; $("rkPct").oninput = draw;
   draw();
-}
-
-function renderCtx(sym) {
-  const k = "ctx-" + sym;
-  $("ctxBox").value = localStorage.getItem(k) || "";
-  $("saveCtx").onclick = () => { localStorage.setItem(k, $("ctxBox").value); alert("Saxlanildi. Sonra AI bu konteksti istifade edecek."); };
 }
 
 const DEFAULT_TACTICS = [
