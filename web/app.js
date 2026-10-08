@@ -226,6 +226,7 @@ const DEFAULT_TACTICS = [
   {name: "ORB", desc: "Gunun ilk 60 deq diapazonu: yuxari qirilma BUY, asagi SELL"},
   {name: "CRT", desc: "Dunenki range sweep + geri: discountda BUY, premiumda SELL"},
   {name: "SPIKE", desc: "Anormal sam (>3xATR): giriş üçün gözlə xəbərdarlığı"},
+  {name: "GZALGO", desc: "Engulfing + RSI + 10-bar reversal + ATR TP/SL"},
   {name: "WILLR", desc: "Williams %R: -80 alti BUY, -20 ustu SELL"},
   {name: "MFI", desc: "Hecmli RSI: 20 alti BUY, 80 ustu SELL"},
   {name: "STREAK", desc: "4+ ardicil sam = tukenme, eksine"},
@@ -505,7 +506,7 @@ updateAlBadge();
 for (const id of ["fBuy", "fSell"]) {
   const el = $(id), cur = el.value;
   el.innerHTML = "";
-  for (let i = 0; i <= 36; i++) {
+  for (let i = 0; i <= 37; i++) {
     const o = document.createElement("option");
     o.value = String(i); o.textContent = String(i);
     el.appendChild(o);

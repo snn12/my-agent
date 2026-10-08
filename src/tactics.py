@@ -714,6 +714,29 @@ def crt_t(df, max_depth: float = 0.5):
     return {"name": "CRT", "signal": "HOLD", "detail": f"Daily range {px(rL)}-{px(rH)} icinde"}
 
 
+def gzalgo_t(df, rsi_hi: float = 80.0, rsi_lo: float = 20.0, lookback: int = 10):
+    """GainzAlgo-v2 uslubu: engulfing + stabil govde + RSI filtri + 10-bar reversal."""
+    if len(df) < lookback + 2:
+        return {"name": "GZALGO", "signal": "HOLD", "detail": "Data azdir"}
+    o1, c1 = float(df["open"].iloc[-2]), float(df["close"].iloc[-2])
+    o0, c0 = float(df["open"].iloc[-1]), float(df["close"].iloc[-1])
+    h0, l0 = float(df["high"].iloc[-1]), float(df["low"].iloc[-1])
+    rng = h0 - l0
+    body = abs(c0 - o0)
+    stable = rng > 0 and body / rng >= 0.3
+    rsi_v = float(df["rsi"].iloc[-1])
+    c10 = float(df["close"].iloc[-1 - lookback])
+    bull_eng = c0 > o0 and c1 < o1 and c0 >= o1 and o0 <= c1
+    bear_eng = c0 < o0 and c1 > o1 and c0 <= o1 and o0 >= c1
+    if bull_eng and stable and rsi_v < rsi_hi and c0 < c10:
+        return {"name": "GZALGO", "signal": "BUY",
+                "detail": f"Bullish engulf + RSI {rsi_v:.0f} + 10-bar dip (ATR TP/SL)"}
+    if bear_eng and stable and rsi_v > rsi_lo and c0 > c10:
+        return {"name": "GZALGO", "signal": "SELL",
+                "detail": f"Bearish engulf + RSI {rsi_v:.0f} + 10-bar rally (ATR TP/SL)"}
+    return {"name": "GZALGO", "signal": "HOLD", "detail": "GZALGO serti yoxdur"}
+
+
 def fund_t(rates):
     """Funding ekstremleri (contrarian): cox musbet = SELL, cox menfi = BUY."""
     if not rates:
@@ -749,6 +772,7 @@ def extra_tactics(df, ema_fast: int = 20, ema_slow: int = 50, oi=None, funding=N
         orb_t(df),
         crt_t(df),
         spike_t(df),
+        gzalgo_t(df),
         willr_t(df),
         mfi_t(df),
         streak_t(df),
