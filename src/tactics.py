@@ -676,6 +676,44 @@ def candle_t(df):
     return {"name": "CANDLE", "signal": "HOLD", "detail": "Xususi forma yoxdur"}
 
 
+def spike_t(df, mult: float = 3.0):
+    """Anormal boyuk sam: diapazon > 3xATR — yeni giris ucun gozle."""
+    atr_v = float(df["atr"].iloc[-1]) or 1.0
+    rng = float(df["high"].iloc[-1] - df["low"].iloc[-1])
+    if rng > mult * atr_v:
+        return {"name": "SPIKE", "signal": "HOLD",
+                "detail": f"Spike sam ({rng / atr_v:.1f}x ATR): giriş üçün gözlə", "spike": True}
+    return {"name": "SPIKE", "signal": "HOLD", "detail": "Normal volatilite", "spike": False}
+
+
+def crt_t(df, max_depth: float = 0.5):
+    """CRT: evvelki gun range sweep (<=0.5 derinlik) + geri baglanis."""
+    d2 = df.copy()
+    d2["day"] = d2["datetime"].dt.strftime("%Y-%m-%d")
+    days = list(dict.fromkeys(d2["day"]))
+    if len(days) < 2:
+        return {"name": "CRT", "signal": "HOLD", "detail": "Dunenki range yoxdur"}
+    prev = d2[d2["day"] == days[-2]]
+    rH, rL = float(prev["high"].max()), float(prev["low"].min())
+    rng = rH - rL
+    if rng <= 0:
+        return {"name": "CRT", "signal": "HOLD", "detail": "Range yoxdur"}
+    last = df.iloc[-1]
+    lo, hi, cl = float(last["low"]), float(last["high"]), float(last["close"])
+    swept_lo = lo < rL and (rL - lo) <= max_depth * rng and cl > rL
+    swept_hi = hi > rH and (hi - rH) <= max_depth * rng and cl < rH
+    mid = (rH + rL) / 2
+    if swept_lo and cl < mid:
+        return {"name": "CRT", "signal": "BUY",
+                "detail": f"Daily sweep {px(rL)} + discountda reclaim"}
+    if swept_hi and cl > mid:
+        return {"name": "CRT", "signal": "SELL",
+                "detail": f"Daily sweep {px(rH)} + premiumda reclaim"}
+    if (lo < rL or hi > rH):
+        return {"name": "CRT", "signal": "HOLD", "detail": "Sweep derin/zonasiz — breakout riski"}
+    return {"name": "CRT", "signal": "HOLD", "detail": f"Daily range {px(rL)}-{px(rH)} icinde"}
+
+
 def fund_t(rates):
     """Funding ekstremleri (contrarian): cox musbet = SELL, cox menfi = BUY."""
     if not rates:
@@ -709,6 +747,8 @@ def extra_tactics(df, ema_fast: int = 20, ema_slow: int = 50, oi=None, funding=N
         pivot_t(df),
         supertrend_t(df),
         orb_t(df),
+        crt_t(df),
+        spike_t(df),
         willr_t(df),
         mfi_t(df),
         streak_t(df),

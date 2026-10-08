@@ -88,6 +88,18 @@ def signal(symbol: str = "BTCUSDT", timeframe: str = "1h", limit: int = 200):
             lv["short"].update(pl["short"])
         except Exception:
             pass
+        # CRT hedefleri (Profit Scouter mentiqi): TP1 = 50%, TP2 = eks teref
+        mid50 = round((sh + slw) / 2, prec)
+        lv["crt_tp1"] = mid50
+        lv["crt_long_tp2"] = round(sh, prec)
+        lv["crt_short_tp2"] = round(slw, prec)
+        try:
+            rL = entry - lv["long"]["sl"]
+            rS = lv["short"]["sl"] - entry
+            lv["rr_long"] = round((lv["long"]["tp_2R"] - entry) / rL, 2) if rL > 0 else None
+            lv["rr_short"] = round((entry - lv["short"]["tp_2R"]) / rS, 2) if rS > 0 else None
+        except Exception:
+            pass
         try:
             d2 = df.copy()
             d2["ym"] = d2["datetime"].dt.strftime("%Y-%m")

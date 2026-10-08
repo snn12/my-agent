@@ -181,6 +181,7 @@ async function openCoin(bybit) {
         `<span class="down">SHORT</span> → SL <b class="down">${fmt(L.short.sl)}</b> · TP ATR <b class="up">${fmt(L.short.tp1)}/${fmt(L.short.tp2)}</b><br>` +
         `&nbsp;&nbsp;TP swing <b class="up">${f2(L.short.tp_swing)}</b> · TP fib1.618 <b class="up">${f2(L.short.tp_fib1618)}</b> · TP 2R <b class="up">${f2(L.short.tp_2R)}</b><br>` +
         `<span class="muted">Swing: ${f2(L.swing_low)} / ${f2(L.swing_high)} · Son 50 bar: max ${fmt(L.swing_high_50)} / min ${fmt(L.swing_low_50)}</span>` +
+        `<br><span class="muted">CRT: TP1 50% ${f2(L.crt_tp1)} · LONG TP2 ${f2(L.crt_long_tp2)} · SHORT TP2 ${f2(L.crt_short_tp2)} · RR long ${L.rr_long ?? "-"} / short ${L.rr_short ?? "-"}</span>` +
         (L.prev_month_high !== undefined
           ? `<br><span class="muted">Evvelki ay: max ${fmt(L.prev_month_high)} / min ${fmt(L.prev_month_low)}</span>` : "");
     } else { $("levels").textContent = "hesablanmadi"; }
@@ -223,6 +224,8 @@ const DEFAULT_TACTICS = [
   {name: "PIVOT", desc: "Dunenki pivot: qiymet PP ustu BUY, alti SELL"},
   {name: "SUPER", desc: "Supertrend (10,3): xett alti BUY, ustu SELL"},
   {name: "ORB", desc: "Gunun ilk 60 deq diapazonu: yuxari qirilma BUY, asagi SELL"},
+  {name: "CRT", desc: "Dunenki range sweep + geri: discountda BUY, premiumda SELL"},
+  {name: "SPIKE", desc: "Anormal sam (>3xATR): giriş üçün gözlə xəbərdarlığı"},
   {name: "WILLR", desc: "Williams %R: -80 alti BUY, -20 ustu SELL"},
   {name: "MFI", desc: "Hecmli RSI: 20 alti BUY, 80 ustu SELL"},
   {name: "STREAK", desc: "4+ ardicil sam = tukenme, eksine"},
@@ -502,7 +505,7 @@ updateAlBadge();
 for (const id of ["fBuy", "fSell"]) {
   const el = $(id), cur = el.value;
   el.innerHTML = "";
-  for (let i = 0; i <= 34; i++) {
+  for (let i = 0; i <= 36; i++) {
     const o = document.createElement("option");
     o.value = String(i); o.textContent = String(i);
     el.appendChild(o);
